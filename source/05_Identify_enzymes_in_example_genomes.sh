@@ -11,7 +11,7 @@ mkdir intermediate/orf intermediate/deepec
 
 # Perform DeepEC analysis on the example genomes
 cat intermediate/example_genomes.txt | parallel --no-notice --jobs 16 '
-  gunzip -c data/orf/{}* > intermediate/orf/{}.fasta;
+  gunzip -c data/orf/{}.fasta.gz > intermediate/orf/{}.fasta;
   mkdir intermediate/deepec/{};
   deepec -i intermediate/orf/{}.fasta -o intermediate/deepec/{} > /dev/null;
   tail -n +2 intermediate/deepec/{}/DeepEC_Result.txt | sed -e "s/^/{}\t/";
