@@ -25,3 +25,11 @@ ls intermediate/aligned_enzymes |
 pigz intermediate/enzymes_to_align/*
 pigz intermediate/aligned_enzymes/*
 pigz intermediate/enzyme_alignment.tab
+
+# Create Accession and Sequence ID table
+paste <(
+  gunzip -c intermediate/enzyme_alignment.tab.gz | cut -f 2 | cut -f 1 -d \|
+  ) <(
+  gunzip -c intermediate/enzyme_alignment.tab.gz | cut -f 2
+  ) |
+  pigz > intermediate/enzyme_alignment.accession_sequence.tab.gz
