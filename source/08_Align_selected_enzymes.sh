@@ -31,5 +31,5 @@ paste <(
   gunzip -c intermediate/enzyme_alignment.tab.gz | cut -f 2 | cut -f 1 -d \|
   ) <(
   gunzip -c intermediate/enzyme_alignment.tab.gz | cut -f 2
-  ) |
+  ) | sort | uniq |
   pigz > intermediate/enzyme_alignment.accession_sequence.tab.gz
