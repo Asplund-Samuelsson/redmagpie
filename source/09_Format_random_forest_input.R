@@ -117,23 +117,24 @@ pcsp = lapply(unique(resc$EC), function(ec){
         ungroup() %>%
         select(-EC, -Position) %>%
         mutate(Class = ifelse(Class == 1, "Positive", "Negative")) %>%
-        spread(Class, Count)
+        spread(Class, Count) %>%
+        filter(Negative > 5 & Positive > 5)
       # Transform to "table" format
       tbl = as.matrix(pretbl[,2:3]) %>% replace_na(0)
       rownames(tbl) = pretbl$Residue
       tbl = as.table(tbl)
-      # Perform Chi-squared test on the table to evaluate Class separation
-      p = chisq.test(tbl, simulate.p.value = T, B=1e5)$p.value
+      # Perform Chi-square test on the table to evaluate Class separation
+      p = chisq.test(tbl)$p.value
       # Return a tibble with EC, Position, and p-value for class separation
       tibble(EC = ec, Position = n, pval = p)
     } %>% bind_rows()
   }) %>% bind_rows() %>%
   # Adjust p values
-  mutate(padj = p.adjust(p, method="BH"))
+  mutate(padj = p.adjust(pval, method="BH"))
 
 preX = ecal %>%
-  # Keep only positions with a p-value below 0.0001
-  anti_join(filter(pcsp, pval > 0.00001))
+  # Keep only positions with a p-value below 0.001
+  anti_join(filter(pcsp, padj >= 0.001))
 
 # Obtain "consensus" sequence
 cons = resf %>%
