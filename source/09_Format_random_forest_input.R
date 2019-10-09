@@ -116,11 +116,27 @@ pcsp = lapply(unique(resc$EC), function(ec){
       pretbl = resc_sub_sub %>%
         ungroup() %>%
         select(-EC, -Position) %>%
+        # Change name of class
         mutate(Class = ifelse(Class == 1, "Positive", "Negative")) %>%
+        # Spread Count into columns for each Class
         spread(Class, Count) %>%
-        filter(Negative > 5 & Positive > 5)
+        # Replace NA with 0
+        mutate(
+          Negative = replace_na(Negative, 0),
+          Positive = replace_na(Positive, 0)
+        )
+      # Determine the minimal sum of counts per class
+      min_count = min(c(sum(pretbl$Negative), sum(pretbl$Positive)))
+      pretbl = pretbl %>%
+        # Normalize counts to the minimal sum of counts per class
+        mutate(
+          Negative = round(min_count * Negative / sum(Negative)),
+          Positive = round(min_count * Positive / sum(Positive))
+        ) %>%
+        # Discard residues with fewer than 5 counts in each position
+        filter(Negative >= 5 & Positive >= 5)
       # Transform to "table" format
-      tbl = as.matrix(pretbl[,2:3]) %>% replace_na(0)
+      tbl = as.matrix(pretbl[,2:3])
       rownames(tbl) = pretbl$Residue
       tbl = as.table(tbl)
       # Perform Chi-square test on the table to evaluate Class separation
@@ -132,12 +148,17 @@ pcsp = lapply(unique(resc$EC), function(ec){
   # Adjust p values
   mutate(padj = p.adjust(pval, method="BH"))
 
+# Save the p-value table
+write_tsv(pcsp, gzfile("intermediate/enzyme_alignment_chi_square_tests.tab.gz"))
+
 preX = ecal %>%
   # Keep only positions with a p-value below 0.001
   anti_join(filter(pcsp, padj >= 0.001))
 
 # Obtain "consensus" sequence
-cons = resf %>%
+cons = resi %>%
+  # Filter to significant positions
+  anti_join(filter(pcsp, padj >= 0.001)) %>%
   # Pick the most common residues per position
   group_by(EC, Position) %>%
   filter(Count == max(Count)) %>%
