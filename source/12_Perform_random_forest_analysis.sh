@@ -25,3 +25,6 @@ source/11_Rank_features_with_random_forest.py \
   --taxonomy intermediate/accession_taxonomy.tab \
   --importances intermediate/${DATA}.importance.tab \
   --predictions intermediate/${DATA}.prediction.tab
+
+# Compress output
+pigz intermediate/*importance.tab intermediate/*prediction.tab
