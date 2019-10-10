@@ -9,6 +9,7 @@ from decimal import Decimal
 from random import sample
 import argparse
 from collections import Counter
+import gzip
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
@@ -42,8 +43,12 @@ def round_to(x, n=1):
         return np.round(x, n - int(np.floor(np.log10(abs(x)))) - 1)
 
 # Read data
-X  = np.array(pd.read_csv(X_file, header = None))
-y  = np.array([int(x.strip()) for x in open(y_file).readlines()])
+X_data = []
+for line in gzip.open(X_file, 'rt'):
+    line = [float(x) for x in line.strip().split(",")]
+    X_data.append(line)
+X = np.array(X_data)
+y = np.array([int(x.strip()) for x in open(y_file).readlines()])
 feature_list = [x.strip() for x in open(feature_name_file).readlines()]
 accession_list = [x.strip() for x in open(accession_id_file).readlines()]
 taxonomy = pd.read_csv(taxonomy_file, header = 0, sep = "\t")
