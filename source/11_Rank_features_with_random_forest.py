@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Import libraries
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -10,13 +12,13 @@ from collections import Counter
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('feature_names', type=str, help='Load feature names.')
-parser.add_argument('accession_ids', type=str, help='Load accession IDs.')
-parser.add_argument('features', type=str, help='Load features.')
-parser.add_argument('classes', type=str, help='Load classes.')
-parser.add_argument('taxonomy', type=str, help='Load taxonomy.')
-parser.add_argument('importances', type=str, help='Save importances.')
-parser.add_argument('predictions', type=str, help='Save predictions.')
+parser.add_argument('--feature_names', type=str, help='Load feature names.')
+parser.add_argument('--accession_ids', type=str, help='Load accession IDs.')
+parser.add_argument('--features', type=str, help='Load features.')
+parser.add_argument('--classes', type=str, help='Load classes.')
+parser.add_argument('--taxonomy', type=str, help='Load taxonomy.')
+parser.add_argument('--importances', type=str, help='Save importances.')
+parser.add_argument('--predictions', type=str, help='Save predictions.')
 args = parser.parse_args()
 
 # Define infiles
