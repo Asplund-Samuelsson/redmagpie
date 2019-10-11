@@ -42,6 +42,43 @@ def round_to(x, n=1):
     else:
         return np.round(x, n - int(np.floor(np.log10(abs(x)))) - 1)
 
+def find_bias(accns, features):
+    # Determine what taxonomic groups have more than 50 examples
+    tax = Counter(list(taxonomy[taxonomy['Accession'].isin(accns)]['Group']))
+    groups = [x for x in tax if tax[x] > 50]
+    # Filter out features that identify large taxonomic groups (>50 members)
+    all_biased_features = set()
+    for group in groups:
+        group_biased_features = set()
+        group_acc = list(taxonomy[taxonomy['Group'] == group]['Accession'])
+        group_labels = np.array([int(x in group_acc) for x in accns])
+        for n in range(0, 100):
+            # Train random forest
+            rf = RandomForestClassifier(
+                n_jobs = 16, n_estimators = 1000, oob_score = True,
+                class_weight = "balanced"
+            )
+            junk = rf.fit(features, group_labels)
+            # Determine what features make up 50% of the importance
+            f = [
+                x for _, x in sorted(zip(rf.feature_importances_, \
+                feature_list), reverse = True)
+            ]
+            i = sorted(rf.feature_importances_, reverse = True)
+            forest_biased_features = set(np.array(f)[np.cumsum(i) <= 0.5])
+            # Add biased features to set for the group
+            group_biased_features.update(forest_biased_features)
+            print(group + " " + str(n))
+            print(" Biased features: " + str(len(forest_biased_features)))
+            print("             OOB: " + str(round_to(rf.oob_score_, 3)))
+            print("")
+        # Add identified biased features to the final set
+        all_biased_features.update(group_biased_features)
+        n_group = str(len(group_biased_features))
+        print("Biased features for " + group + ": " + n_group)
+        print("")
+    return all_biased_features
+
 # Read data
 X_data = []
 for line in gzip.open(X_file, 'rt'):
@@ -53,45 +90,18 @@ feature_list = [x.strip() for x in open(feature_name_file).readlines()]
 accession_list = [x.strip() for x in open(accession_id_file).readlines()]
 taxonomy = pd.read_csv(taxonomy_file, header = 0, sep = "\t")
 
-# Determine what taxonomic groups have more than 50 positive examples
-pos_acc = np.array(accession_list)[y == 1]
-pos_tax = Counter(list(taxonomy[taxonomy['Accession'].isin(pos_acc)]['Group']))
-groups = [x for x in pos_tax if pos_tax[x] > 50]
+# Find phylogenetically biased features for positive genomes
+bias_1 = find_bias(np.array(accession_list)[y == 1], X[y == 1,:])
+print("Found " + str(len(bias_1)) + " biased features for positive genomes.")
+print("")
 
-# Filter out features that identify large taxonomic groups (>50 members)
-phylogenetically_biased_features = set()
-group_features = X[y == 1,:]
-for group in groups:
-    group_biased_features = set()
-    group_acc = list(taxonomy[taxonomy['Group'] == group]['Accession'])
-    group_labels = np.array([int(x in group_acc) for x in pos_acc])
-    for n in range(0, 100):
-        # Train random forest
-        rf = RandomForestClassifier(
-            n_jobs = 16, n_estimators = 1000, oob_score = True,
-            class_weight = "balanced"
-        )
-        junk = rf.fit(group_features, group_labels)
-        # Determine what features make up 90% of the importance
-        f = [
-            x for _, x in sorted(zip(rf.feature_importances_, \
-            feature_list), reverse = True)
-        ]
-        i = sorted(rf.feature_importances_, reverse = True)
-        biased_features = set(np.array(f)[np.cumsum(i) <= 0.5])
-        # Add biased features to set for the group
-        group_biased_features.update(biased_features)
-        print(group + " " + str(n))
-        print(" Biased features: " + str(len(biased_features)))
-        print("             OOB: " + str(round_to(rf.oob_score_, 3)))
-        print("")
-    # Add identified biased features to the final set
-    phylogenetically_biased_features.update(group_biased_features)
-    n_group = str(len(group_biased_features))
-    print("Biased features for " + group + ": " + n_group)
-    print("")
+# Find phylogenetically biased features for negative genomes
+bias_0 = find_bias(np.array(accession_list)[y == 0], X[y == 0,:])
+print("Found " + str(len(bias_0)) + " biased features for negative genomes.")
+print("")
 
 # Report the total number of phylogenetically biased features identified
+phylogenetically_biased_features = bias_1 | bias_0
 print("Total biased features: " + str(len(phylogenetically_biased_features)))
 print("")
 
