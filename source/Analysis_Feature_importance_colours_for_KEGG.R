@@ -3,38 +3,22 @@ library(tidyverse)
 
 # Define infiles
 feim_file = "intermediate/EC_count_features.importance.tab.gz"
-eckg_file = "data/kegg_enzyme.tab"
 tran_file = "data/kegg_enzyme.old_new.tab"
 koec_file = "data/ko_ec.tab"
 
 # Load data
 feim = read_tsv(feim_file)
-eckg = read_tsv(eckg_file, col_names = c("EC", "Name"))
 tran = read_tsv(tran_file, col_names = c("EC", "NewEC"))
 koec = read_tsv(koec_file, col_names=c("KO", "EC"))
 
-# Clean up KEGG EC annotations
-eckg = eckg %>%
-  # Make EC nicer
-  mutate(EC = unlist(lapply(str_split(EC, ":"), "[[", 2))) %>%
-  # Make Name nicer
-  mutate(
-    FullName = Name,
-    Name = unlist(lapply(str_split(Name, ";"), "[[", 1))
-  )
-
+# Clean up EC annotations
 feim = feim %>%
   rename(EC = Feature) %>%
   # Clean up EC
   mutate(EC = str_replace(EC, "EC", "")) %>%
-  # Calculate feature importance mean, sd, and CV
+  # Calculate feature Importance mean
   group_by(EC) %>%
-  summarise(
-    SD = sd(Importance),
-    CV = 100 * SD / mean(Importance),
-    Importance = mean(Importance),
-    log10imp = log10(Importance)
-  )
+  summarise(Importance = mean(Importance), log10imp = log10(Importance))
 
 feim = feim %>%
   # Rename EC if it has been updated
@@ -44,12 +28,8 @@ feim = feim %>%
     EC = ifelse(is.na(NewEC), EC, NewEC)
   ) %>%
   select(-NewEC) %>%
-  # Add Name to feature importance data
-  left_join(eckg) %>%
   # Order by importance
-  arrange(-Importance) %>%
-  # Drop full name
-  select(-FullName)
+  arrange(-Importance)
 
 feim = feim %>%
   # Add KO if available
