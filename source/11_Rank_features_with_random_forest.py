@@ -2,6 +2,8 @@
 
 # Import libraries
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_selection import RFE
 import numpy as np
 import pandas as pd
 from decimal import Decimal
@@ -83,6 +85,8 @@ X_data = []
 for line in gzip.open(X_file, 'rt'):
     line = [float(x) for x in line.strip().split(",")]
     X_data.append(line)
+
+
 X = np.array(X_data)
 y = np.array([int(x.strip()) for x in open(y_file).readlines()])
 feature_list = [x.strip() for x in open(feature_name_file).readlines()]
@@ -104,10 +108,24 @@ phylogenetically_biased_features = bias_1 | bias_0
 print("Total biased features: " + str(len(phylogenetically_biased_features)))
 print("")
 
+# B = "intermediate/EC_count_features.biased.txt"
+# phylogenetically_biased_features = set([x.strip() for x in open(B).readlines()])
+
 # Filter the input features to those that are not phylogenetically biased
 f = np.array([x not in phylogenetically_biased_features for x in feature_list])
 X_f = X[:,f]
 feature_list_f = list(np.array(feature_list)[f])
+
+# Select most promising features using logistic regression
+rfe = RFE(
+    estimator=LogisticRegression(),
+    n_features_to_select=int(np.ceil(0.25*X_f.shape[1])),
+    step=10, verbose=0
+)
+rfe.fit(X_f, y)
+rfe_support = rfe.get_support()
+X_f = X_f[:,rfe_support]
+feature_list_f = list(np.array(feature_list_f)[rfe_support])
 
 # Open feature importance file and write header
 imp_file = open(importance_file, 'w')
@@ -130,9 +148,7 @@ for n in range(0, 100):
     train_labels = y[train_indices]
     train_features = X_f[train_indices,:]
     # Train random forest
-    rf = RandomForestClassifier(
-        n_jobs = 16, n_estimators = 1000, oob_score=True
-    )
+    rf = RandomForestClassifier(n_jobs=16, n_estimators=500, oob_score=True)
     junk = rf.fit(train_features, train_labels)
     # Predict test labels
     predictions = rf.predict(test_features)
@@ -147,8 +163,13 @@ for n in range(0, 100):
     junk = prd_file.write(prd_out)
     # Report accuracy
     accu = sum([int(x) for x in predictions == test_labels]) / len(test_labels)
+    if n == 0:
+        asum = accu
+    else:
+        asum += accu
     print(" Accuracy: " + str(round_to(accu, 3)))
     print("      OOB: " + str(round_to(rf.oob_score_, 3)))
+    print(" Av. acc.: " + str(round_to(asum/(n+1), 3)))
     print("")
 
 # Close files

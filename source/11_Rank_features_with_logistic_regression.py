@@ -115,7 +115,7 @@ taxonomy = pd.read_csv(taxonomy_file, header = 0, sep = "\t")
 # print("Total biased features: " + str(len(phylogenetically_biased_features)))
 # print("")
 
-B = "/home/johannes/proj/psmd/results/2019-10-31/EC_count_features.biased.txt"
+B = "intermediate/EC_count_features.biased.txt"
 phylogenetically_biased_features = set([x.strip() for x in open(B).readlines()])
 
 # Filter the input features to those that are not phylogenetically biased
