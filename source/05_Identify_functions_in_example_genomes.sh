@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # Create list of examples genomes accession IDs
-# (
-#   cut -f 1 intermediate/example_genomes.tab | tail -n +2
-#   cut -f 2 intermediate/example_genomes.tab | tail -n +2
-# ) > intermediate/example_genomes.txt
+(
+  cut -f 1 intermediate/example_genomes.tab | tail -n +2
+  cut -f 2 intermediate/example_genomes.tab | tail -n +2
+) > intermediate/example_genomes.txt
 
 # Create temporary directories for DeepEC
 mkdir intermediate/orf intermediate/deepec
@@ -25,3 +25,18 @@ pigz intermediate/deepec.error
 
 # Remove temporary directories
 rmdir intermediate/orf intermediate/deepec
+
+# Perform Pfam analysis on the example genomes
+cat intermediate/example_genomes.txt | parallel --no-notice --jobs 16 '
+  gunzip -c data/orf/{}.fasta.gz > intermediate/{}.fasta;
+  hmmsearch --cut_tc --noali -o /dev/null \
+  --tblout intermediate/{}.tblout data/Pfam-A.hmm.gz intermediate/{}.fasta;
+  cat intermediate/{}.tblout | grep -v "^#" | sed -e "s/ \+/\t/g" | \
+  cut -f 1,4 | sed -e "s/^/{}\t/";
+  rm intermediate/{}.tblout;
+  rm intermediate/{}.fasta
+' > intermediate/pfam.tab 2> intermediate/pfam.error
+
+# Zip output
+pigz intermediate/pfam.tab
+pigz intermediate/pfam.error

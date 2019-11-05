@@ -2,3 +2,4 @@ __pycache__
 data/orf
 data/bacteria_msa.fasta
 data/archaea_msa.fasta
+data/Pfam-A.hmm.gz
