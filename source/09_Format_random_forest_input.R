@@ -3,12 +3,14 @@ library(tidyverse)
 
 # Define infiles
 dpec_file = "intermediate/deepec.tab.gz"
+pfam_file = "intermediate/pfam.tab.gz"
 ecal_file = "intermediate/enzyme_alignment.tab.gz"
 exgn_file = "intermediate/example_genomes.tab"
 acsq_file = "intermediate/enzyme_alignment.accession_sequence.tab.gz"
 
 # Load data
 dpec = read_tsv(dpec_file, col_names = c("Accession", "ORF", "EC"))
+pfam = read_tsv(pfam_file, col_names = c("Accession", "ORF", "Pfam"))
 ecal = read_tsv(ecal_file, col_names = c("EC", "Sequence", "Alignment"))
 exgn = read_tsv(exgn_file)
 acsq = read_tsv(acsq_file, col_names = c("Accession", "Sequence"))
@@ -58,7 +60,49 @@ write_lines(colnames(X), "intermediate/EC_count_features.feature_names.txt")
 write_lines(rownames(X), "intermediate/EC_count_features.accession_ids.txt")
 
 
-# 2. Features from alignments
+# 2. Features from Pfams
+
+# Prepare examples and features matrix
+preX = pfam %>%
+  # Exclude PRK and rubisco
+  filter(!(Pfam %in% c("PF02788.16", "PF00016.20", "PF00485.18"))) %>%
+  # Count occurrences of each Pfam
+  group_by(Accession, Pfam) %>%
+  summarise(Count = length(Pfam)) %>%
+  ungroup() %>%
+  # Spread Pfams into columns
+  spread(Pfam, Count)
+
+# Create X matrix
+X = preX %>% select(-Accession) %>% as.matrix()
+
+# Set row names
+rownames(X) = preX$Accession
+
+# Set NA to 0 occurrences of the EC in question
+X[is.na(X)] = 0
+
+# Create y class vector
+y = ifelse(preX$Accession %in% exgn$Genome, 1, 0)
+
+# Write X to file
+write_csv(
+  as_tibble(X),
+  gzfile("intermediate/pfam_features.X.csv.gz"),
+  col_names=F
+)
+
+# Write y to file
+write_lines(y, "intermediate/pfam_features.y.txt")
+
+# Write feature name vector
+write_lines(colnames(X), "intermediate/pfam_features.feature_names.txt")
+
+# Write data points accession ID vector
+write_lines(rownames(X), "intermediate/pfam_features.accession_ids.txt")
+
+
+# 3. Features from alignments
 
 ecal = ecal %>%
   # Split alignment into amino acids
@@ -151,14 +195,26 @@ pcsp = lapply(unique(resc$EC), function(ec){
 # Save the p-value table
 write_tsv(pcsp, gzfile("intermediate/enzyme_alignment_chi_square_tests.tab.gz"))
 
+# Determine wanted positions (lowest p-value so that all ECs are represented)
+wpos = pcsp %>%
+  # Remove insignificant positions
+  filter(padj < 0.001) %>%
+  # Sort by increasing adjusted p-value
+  arrange(padj) %>%
+  filter(
+    !unlist(lapply(
+      1:nrow(.), function(x){sum(unique(EC) %in% EC[1:(x-1)]) == 34}
+    ))
+  )
+
 preX = ecal %>%
-  # Keep only positions with a p-value below 0.001
-  anti_join(filter(pcsp, padj >= 0.001))
+  # Keep only wanted positions
+  inner_join(select(wpos, EC, Position))
 
 # Obtain "consensus" sequence
 cons = resi %>%
   # Filter to significant positions
-  anti_join(filter(pcsp, padj >= 0.001)) %>%
+  inner_join(select(wpos, EC, Position)) %>%
   # Pick the most common residues per position
   group_by(EC, Position) %>%
   filter(Count == max(Count)) %>%

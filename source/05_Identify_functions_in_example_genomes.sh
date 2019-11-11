@@ -39,4 +39,3 @@ cat intermediate/example_genomes.txt | parallel --no-notice --jobs 16 '
 
 # Zip output
 pigz intermediate/pfam.tab
-pigz intermediate/pfam.error

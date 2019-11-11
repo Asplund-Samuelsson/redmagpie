@@ -21,6 +21,14 @@ parser.add_argument('--classes', type=str, help='Load classes.')
 parser.add_argument('--taxonomy', type=str, help='Load taxonomy.')
 parser.add_argument('--importances', type=str, help='Save importances.')
 parser.add_argument('--predictions', type=str, help='Save predictions.')
+parser.add_argument(
+    '--var_cut', action='store_true', default=False,
+    help='Select features with variance before phylogenetic filter.'
+)
+parser.add_argument(
+    '--lgr_cut', action='store_true', default=False,
+    help='Select features with logistic regression after phylogenetic filter.'
+)
 args = parser.parse_args()
 
 # Define infiles
@@ -33,6 +41,10 @@ taxonomy_file     = args.taxonomy
 # Define outfiles
 importance_file   = args.importances
 prediction_file   = args.predictions
+
+# Store flags
+var_cut = args.var_cut
+lgr_cut = args.lgr_cut
 
 # Define functions
 def round_to(x, n=1):
@@ -93,6 +105,12 @@ feature_list = [x.strip() for x in open(feature_name_file).readlines()]
 accession_list = [x.strip() for x in open(accession_id_file).readlines()]
 taxonomy = pd.read_csv(taxonomy_file, header = 0, sep = "\t")
 
+if var_cut:
+    # Filter features based on variance
+    varf = np.var(X, axis=0).argsort()[-3000:][::-1]
+    X = X[:,varf]
+    feature_list = list(np.array(feature_list)[varf])
+
 # Find phylogenetically biased features for positive genomes
 bias_1 = find_bias(np.array(accession_list)[y == 1], X[y == 1,:])
 print("Found " + str(len(bias_1)) + " biased features for positive genomes.")
@@ -108,24 +126,22 @@ phylogenetically_biased_features = bias_1 | bias_0
 print("Total biased features: " + str(len(phylogenetically_biased_features)))
 print("")
 
-# B = "intermediate/EC_count_features.biased.txt"
-# phylogenetically_biased_features = set([x.strip() for x in open(B).readlines()])
-
 # Filter the input features to those that are not phylogenetically biased
 f = np.array([x not in phylogenetically_biased_features for x in feature_list])
 X_f = X[:,f]
 feature_list_f = list(np.array(feature_list)[f])
 
-# Select most promising features using logistic regression
-rfe = RFE(
-    estimator=LogisticRegression(),
-    n_features_to_select=int(np.ceil(0.25*X_f.shape[1])),
-    step=10, verbose=0
-)
-rfe.fit(X_f, y)
-rfe_support = rfe.get_support()
-X_f = X_f[:,rfe_support]
-feature_list_f = list(np.array(feature_list_f)[rfe_support])
+if lgr_cut:
+    # Select most promising features using logistic regression
+    rfe = RFE(
+        estimator=LogisticRegression(),
+        n_features_to_select=int(np.ceil(0.25*X_f.shape[1])),
+        step=10, verbose=0
+    )
+    rfe.fit(X_f, y)
+    rfe_support = rfe.get_support()
+    X_f = X_f[:,rfe_support]
+    feature_list_f = list(np.array(feature_list_f)[rfe_support])
 
 # Open feature importance file and write header
 imp_file = open(importance_file, 'w')
