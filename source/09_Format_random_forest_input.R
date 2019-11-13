@@ -64,8 +64,10 @@ write_lines(rownames(X), "intermediate/EC_count_features.accession_ids.txt")
 
 # Prepare examples and features matrix
 preX = pfam %>%
-  # Exclude PRK and rubisco
-  filter(!(Pfam %in% c("PF02788.16", "PF00016.20", "PF00485.18"))) %>%
+  # Exclude PRK and rubisco, including small subunit
+  filter(
+    !(Pfam %in% c("PF02788.16", "PF00016.20", "PF00485.18", "PF00101.20"))
+  ) %>%
   # Count occurrences of each Pfam
   group_by(Accession, Pfam) %>%
   summarise(Count = length(Pfam)) %>%
