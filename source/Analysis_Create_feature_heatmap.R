@@ -4,6 +4,11 @@ library(tidyverse)
 # Load metadata
 exgn = read_tsv("intermediate/example_genomes.tab")
 taxo = read_tsv("intermediate/accession_taxonomy.tab")
+comp = read_tsv("data/gtdb_metadata.tab.gz") %>%
+  select(accession, checkm_completeness) %>%
+  rename(Accession = accession, Completeness = checkm_completeness) %>%
+  filter(Accession %in% c(exgn$Genome, exgn$Relative)) %>%
+  mutate(Completeness = Completeness / 100)
 
 # Load features
 dpec = read_csv(
@@ -116,12 +121,16 @@ avac = accu %>%
   group_by(Accession) %>%
   summarise(Accuracy = mean(Accuracy)) %>%
   inner_join(select(taxo, Accession, Group)) %>%
+  inner_join(comp) %>%
   mutate(
     Class = ifelse(Accession %in% exgn$Genome, "CBB-positive", "CBB-negative"),
-    SortValue = ifelse(Class == "CBB-positive", Accuracy, -Accuracy)
+    SortValue = ifelse(Class == "CBB-positive", Accuracy, -Accuracy),
+    SortValue2 = ifelse(Class == "CBB-positive", Completeness, -Completeness)
   ) %>%
-  arrange(desc(Class), -SortValue, Group)
+  arrange(desc(Class), -SortValue, Group, -SortValue2)
 accu = accu %>%
+  mutate(Accession = factor(Accession, levels=avac$Accession))
+comp = comp %>%
   mutate(Accession = factor(Accession, levels=avac$Accession))
 
 # Combine Values and order Accession according to Class, Accuracy, and Group
@@ -143,20 +152,43 @@ gp = gp + annotate(
   geom="text", x=10, y=0.5, label="Average accuracy",
   colour="black", size = 14, hjust=0
 )
+gp = gp + scale_y_continuous(breaks=c(0,0.5,1))
 gp = gp + theme_bw()
 gp = gp + theme(
-  axis.text = element_blank(),
+  axis.text.y = element_text(size=12),
+  axis.text.x = element_blank(),
   axis.title = element_blank(),
   axis.ticks = element_blank(),
   panel.grid = element_blank(),
   legend.direction="horizontal",
-  legend.position=c(0.9,0.5),
+  legend.position=c(0.16,0.5),
   legend.background = element_blank(),
   panel.border = element_blank(),
   legend.text = element_text(size=18),
   legend.title = element_blank()
 )
 gpac = gp
+
+# Create Completeness plot
+gp = ggplot(comp, aes(x=Accession, y=Completeness))
+gp = gp + geom_point(alpha=0.2, size=0.8)
+gp = gp + annotate(
+  geom="text", x=10, y=0.7, label="Completeness",
+  colour="black", size = 14, hjust=0
+)
+gp = gp + scale_y_continuous(breaks=c(0.4, 0.7, 1.0))
+gp = gp + theme_bw()
+gp = gp + theme(
+  axis.text.y = element_text(size=12),
+  axis.text.x = element_blank(),
+  axis.title = element_blank(),
+  axis.ticks = element_blank(),
+  panel.grid = element_blank(),
+  panel.border = element_blank(),
+  legend.text = element_text(size=18),
+  legend.title = element_blank()
+)
+gpcm = gp
 
 # Create phylogenetic Group plot
 grtb = select(fval, Accession, Group) %>% distinct()
@@ -286,10 +318,11 @@ png(
   h=700, w=1200, units="mm", res=300
 )
 ggarrange(
-  gp0, gp0, gp0,  gpgr,
-  gp0, gp0, gp0,  gpcl,
-  gp0, gp0, gp0,  gpac,
-  gp0, gp0, gpim, gpvl,
-  ncol=4, widths=c(0,0,1,30), heights=c(1,1,1,30)
+  gp0, gp0, gp0, gp0,  gpgr,
+  gp0, gp0, gp0, gp0,  gpcl,
+  gp0, gp0, gp0, gp0,  gpac,
+  gp0, gp0, gp0, gp0,  gpcm,
+  gp0, gp0, gp0, gpim, gpvl,
+  ncol=5, widths=c(0,0,0,1,30), heights=c(1,1,1,1,30)
 )
 garbage = dev.off()
