@@ -3,7 +3,7 @@
 # Create alignment output directory
 mkdir intermediate/aligned_enzymes
 
-# Align enzymes using muscle
+# Align enzymes using mafft
 ls intermediate/enzymes_to_align/ | parallel --no-notice --jobs 16 '
 Outfile=`echo "intermediate/aligned_enzymes/{}" | sed -e "s/.fasta/.ali.fasta/"`
 cat intermediate/enzymes_to_align/{} | mafft - > ${Outfile}

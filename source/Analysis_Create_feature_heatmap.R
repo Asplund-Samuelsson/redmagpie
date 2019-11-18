@@ -193,26 +193,40 @@ gpcm = gp
 # Create phylogenetic Group plot
 grtb = select(fval, Accession, Group) %>% distinct()
 
+# cltb = grtb %>%
+#   # Select top 6 groups
+#   group_by(Group) %>%
+#   summarise(Count = length(Group)) %>%
+#   arrange(-Count) %>%
+#   top_n(6, Count) %>%
+#   # Remove Cyanobacteria
+#   filter(Group != "Cyanobacteria") %>%
+#   # Add colour for remaining top 5 groups
+#   mutate(
+#     Colour = rev(c("#543005", "#8c510a", "#bf812d", "#dfc27d", "#f6e8c3"))
+#   ) %>%
+#   # Add colour for Cyanobacteria and Other
+#   select(-Count) %>%
+#   bind_rows(
+#     tibble(
+#       Group = c("Cyanobacteria", "Other"),
+#       Colour = c("#35978f", "#f5f5f5")
+#     )
+#   )
+
 cltb = grtb %>%
-  # Select top 6 groups
+  # Select top 5 groups
   group_by(Group) %>%
   summarise(Count = length(Group)) %>%
+  top_n(5, Count) %>%
   arrange(-Count) %>%
-  top_n(6, Count) %>%
-  # Remove Cyanobacteria
-  filter(Group != "Cyanobacteria") %>%
-  # Add colour for remaining top 5 groups
+  # Add colour
   mutate(
-    Colour = rev(c("#543005", "#8c510a", "#bf812d", "#dfc27d", "#f6e8c3"))
+   Colour = rev(c("#543005", "#8c510a", "#bf812d", "#dfc27d", "#f6e8c3"))
   ) %>%
-  # Add colour for Cyanobacteria and Other
+  # Add colour for Other
   select(-Count) %>%
-  bind_rows(
-    tibble(
-      Group = c("Cyanobacteria", "Other"),
-      Colour = c("#35978f", "#f5f5f5")
-    )
-  )
+  bind_rows(tibble(Group = "Other", Colour = "#f5f5f5"))
 
 grtb = grtb %>%
   # Rename Group if rare
