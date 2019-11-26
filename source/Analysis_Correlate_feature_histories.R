@@ -6,14 +6,14 @@ library(ggtree)
 
 # Define infiles
 artr_file = "intermediate/archaea.tree"
-batr_file = "intermediate/bacteria.tree"
+batr_file = "intermediate/bacteria_midpoint_rooted_tree.Rdata"
 exgn_file = "intermediate/example_genomes.tab"
 ecim_file = "intermediate/EC_count_features.importance.tab.gz"
 pfim_file = "intermediate/pfam_features.importance.tab.gz"
 
 # Load data
 artr = read.tree(artr_file)
-batr = read.tree(batr_file)
+load(batr_file) # Loads "batr" object; Already midpoint-rooted bacterial tree
 exgn = read_tsv(exgn_file)
 ecim = read_tsv(ecim_file)
 pfim = read_tsv(pfim_file)
@@ -54,6 +54,9 @@ pfam = read_csv(
 # Combine features
 feat = bind_rows(dpec, pfam)
 
+# Root Archaeal tree (Bacterial tree is already rooted)
+artr = midpoint.root2(artr)
+
 # Prune trees to example genomes
 artr = drop.tip(artr, setdiff(artr$tip.label, c(exgn$Genome, exgn$Relative)))
 batr = drop.tip(batr, setdiff(batr$tip.label, c(exgn$Genome, exgn$Relative)))
@@ -64,10 +67,6 @@ names(apos) = artr$tip.label
 bpos = ifelse(batr$tip.label %in% posg, "Positive", "Negative")
 names(bpos) = batr$tip.label
 
-# Root trees
-artr = midpoint.root2(artr)
-batr = midpoint.root2(batr)
-
 # Perform Ancestral Character Estimation of genome positivity
 aACE = ace(apos, artr, model="ER", type="discrete")
 bACE = ace(bpos, batr, model="ER", type="discrete")
@@ -75,7 +74,7 @@ bACE = ace(bpos, batr, model="ER", type="discrete")
 # Perform analysis for each feature
 library(foreach)
 library(doMC)
-registerDoMC(16)
+registerDoMC(32)
 
 ftpc = foreach(f=unique(feat$Feature)) %dopar% {
   # Create feature vectors

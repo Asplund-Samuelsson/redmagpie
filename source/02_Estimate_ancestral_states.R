@@ -23,7 +23,10 @@ names(bpos) = batr$tip.label
 artr = midpoint.root2(artr)
 batr = midpoint.root2(batr)
 
-# load("/home/johannes/proj/psmd/data/2019-09-09/bac120_msa.full.tree.rooted.batr.Rdata")
+# Save rooted bacterial tree since it is a very slow process
+save(batr, file="intermediate/bacteria_midpoint_rooted_tree.Rdata")
+
+# load("intermediate/bacteria_midpoint_rooted_tree.Rdata")
 
 # Check that there are no branches with length zero
 if (
