@@ -127,17 +127,6 @@ gp +
     high="#5ab4ac", mid="#888888", low="#d8b365", midpoint=0.5
   )
 
-# Calculate distances between tips
-bdis = cophenetic.phylo(batr)
-
-bdtb = bdis %>%
-  as_tibble() %>%
-  mutate(Accession = colnames(.)) %>%
-  gather(Relative, Distance, -Accession)
-
-# Use hclust
-bhcl = hclust(as.dist(bdis))
-
 # Count Positive and Negative among Archaea
 acal = tibble(
     Calvin = ifelse(artr$tip.label %in% posg, 1, 0)
@@ -156,118 +145,141 @@ library(foreach)
 library(doMC)
 registerDoMC(16)
 
-kdis = bdis
+# Generate all subtrees
+ntip = length(batr$tip.label)
+nods = batr$Nnode
+sbts = lapply(1:nods + ntip, function(n){extract.clade(batr, n)})
 
-# Find optimal number of clusters as close as possible to Arch. tree properties
-find_nopt = function(kdis) {
-
-  aksm = foreach(n=1:nrow(kdis)) %dopar% {
-    # Determine the subtrees
-    clst = cutree(hclust(as.dist(kdis)), k=n)
-    clst = tibble(Accession = names(clst), Cluster = clst)
-    # Determine non-trivial clusters (size > 1)
-    ntrv = clst %>%
-      group_by(Cluster) %>%
-      summarise(Count = length(Cluster)) %>%
-      filter(Count > 1) %>%
-      pull(Cluster)
-    # For each cluster...
-    clsi = lapply(ntrv, function(k){
-      # Extract the subtree
-      cltr = drop.tip(
-        batr, setdiff(batr$tip.label, filter(clst, Cluster == k)$Accession)
+# Function to calculate a rough similarity between a tree and the archaeal tree
+archsim = function(sbtr){
+  suppressMessages(
+    tibble(
+      Calvin = ifelse(sbtr$tip.label %in% posg, 1, 0)
+    ) %>%
+    group_by(Calvin) %>%
+    summarise(Count = length(Calvin)) %>%
+    inner_join(acal) %>%
+    # Compare count of positive and negative genomes to Archaea
+    mutate(
+      Factor = exp(-abs(log(Count / Reference))),
+      Calvin = ifelse(Calvin == 1, "Positive", "Negative")
+    ) %>%
+    rename(Aspect = Calvin) %>%
+    select(Aspect, Factor) %>%
+    # Compare height and CV to Archaea
+    bind_rows(
+      tibble(
+        Aspect = c("Height", "CV"),
+        Factor = c(
+          exp(-abs(log(max(nodeHeights(sbtr))/ahgt))),
+          exp(-abs(log((sd(sbtr$edge.length)/mean(sbtr$edge.length)/aecv))))
+        )
       )
-      suppressMessages(
-        tibble(
-          Calvin = ifelse(cltr$tip.label %in% posg, 1, 0)
-        ) %>%
-        group_by(Calvin) %>%
-        summarise(Count = length(Calvin)) %>%
-        inner_join(acal) %>%
-        # Compare count of positive and negative genomes to Archaea
-        mutate(
-          Factor = exp(-abs(log(Count / Reference))),
-          Calvin = ifelse(Calvin == 1, "Positive", "Negative")
-        ) %>%
-        rename(Aspect = Calvin) %>%
-        select(Aspect, Factor) %>%
-        # Compare height and CV to Archaea
-        bind_rows(
-          tibble(
-            Aspect = c("Height", "CV"),
-            Factor = c(
-              exp(-abs(log(max(nodeHeights(cltr))/ahgt))),
-              exp(-abs(log((sd(cltr$edge.length)/mean(cltr$edge.length)/aecv))))
-            )
-          )
-        ) %>%
-        mutate(Cluster = k, Size = length(cltr$tip.label), Clusters = n)
-      )
-    }) %>% bind_rows()
-  } %>% bind_rows()
+    )
+  )
+}
 
-  # Find the optimal cluster number
-  aksa = aksm %>%
-    group_by(Clusters, Cluster, Size) %>%
-    summarise(Similarity = prod(Factor)) %>%
-    arrange(-Similarity)
-
-  akop = aksa %>%
-    group_by(Clusters) %>%
-    summarise(Similarity = mean(Similarity), Size = mean(Size)) %>%
-    arrange(-Similarity)
-
-  nopt = akop$Clusters[1]
-
-  if (nopt == 1){
-    return(rownames(kdis))
-  } else {
-    # Recursion
-    clst = cutree(hclust(as.dist(kdis)), k=nopt)
-    clst = tibble(Accession = names(clst), Cluster = clst)
-    lapply(1:nopt, function(n){
-      accs = filter(clst, Cluster == n)$Accession
-      find_nopt(kdis[accs, accs])
-    })
+# Calculate the similarity of each subtree with > 2 tips to Archaeal tree
+sbsf = bind_rows(lapply(
+  1:length(sbts),
+  function(i){
+    if (length(sbts[[i]]$tip.label) > 2) {
+      archsim(sbts[[i]]) %>%
+        mutate(Subtree = i, Size = length(sbts[[i]]$tip.label))
+    }
   }
-}
-
-# Get a hierarchical list of lists for the optimal clusters
-opcl = find_nopt(bdis)
-
-# List flattening function by Tommy, 2011
-# https://stackoverflow.com/a/8139959/6018441
-flatten2 <- function(x) {
-  len <- sum(rapply(x, function(x) 1L))
-  y <- vector('list', len)
-  i <- 0L
-  rapply(x, function(x) { i <<- i+1L; y[[i]] <<- x })
-  y
-}
-
-# Flatten the list
-oclf = flatten2(opcl)
-
-# Create cluster table
-oclt = bind_rows(lapply(
-  1:length(oclf), function(i){tibble(Cluster = i, Accession = oclf[[i]])}
 ))
 
-# Check what kind of clusters are in there
-ocls = oclt %>%
-  group_by(Cluster) %>%
-  summarise(
-    Count = length(Cluster),
-    Calvin = sum(Accession %in% posg)/length(Cluster)
+sbsm = sbsf %>%
+  # For each Subtree..
+  group_by(Subtree) %>%
+  # Make sure that all Aspects are included (Positive/Negative can be missing)
+  filter(setequal(c("Positive", "Negative", "Height", "CV"), Aspect)) %>%
+  # Calculate the Similarity
+  summarise(Similarity = prod(Factor), Size = unique(Size)) %>%
+  # Add the node in the tree
+  mutate(
+    Node = Subtree + ntip
   )
 
-# Check the distribution of the clusters on the phylogenetic tree
+# Create a table with Subtrees, listing Accessions
+sbtt = bind_rows(lapply(
+  sbsm$Subtree,
+  function(i){tibble(Subtree = i, Accession = sbts[[i]]$tip.label)}
+))
+
+# Calculate what other trees each tree is compatible with
+tcmp = bind_rows(lapply(
+  sbtt$Subtree %>% unique(),
+  function(i){
+    accs = filter(sbtt, Subtree == i)$Accession
+    sbtt %>%
+      filter(Subtree != i) %>%
+      group_by(Subtree) %>%
+      summarise(Compatible = sum(Accession %in% accs) == 0) %>%
+      filter(Compatible) %>%
+      select(-Compatible) %>%
+      rename(Compatible = Subtree) %>%
+      mutate(Subtree = i)
+  }
+))
+
+# Function to find the Subtrees compatible with all trees in a set of Subtrees
+get_compatible = function(ssbt){
+  tcmp %>%
+    filter(Subtree %in% ssbt) %>%
+    group_by(Compatible) %>%
+    summarise(Count = length(Compatible)) %>%
+    filter(Count == length(ssbt)) %>%
+    pull(Compatible)
+}
+
+# Iteratively select the best subtrees
+sbti = sbsm %>% top_n(1, Similarity) %>% pull(Subtree)
+sims = sbsm %>% filter(Subtree %in% get_compatible(sbti))
+
+while (nrow(sims) > 0) {
+  sbti = c(sbti, sims %>% top_n(1, Similarity) %>% pull(Subtree))
+  sims = sims %>% filter(Subtree %in% get_compatible(sbti))
+}
+
+# Compare to previous method
+lapply(oclf, function(x){prod(archsim(keep.tip(batr, x))$Factor)}) %>%
+  unlist() %>% mean()
+# Mean similarity was 0.18
+unlist(oclf) %>% length
+# Number of genomes was 2524
+filter(sbtt, Subtree %in% sbti) %>% nrow
+# Number of genomes is now 2508
+filter(sbsm, Subtree %in% sbti) %>% pull(Similarity) %>% mean
+# ...and mean similarity is 0.075
+filter(sbsm, Subtree %in% sbti) %>%
+  arrange(-Similarity) %>%
+  top_n(16, Similarity) %>%
+  pull(Similarity) %>%
+  mean()
+# Even with the top 16, same number as before, mean similarity is just 0.16
+
+# Create Subtree table
+oclt = bind_rows(lapply(
+  1:length(oclf), function(i){tibble(Subtree = i, Accession = oclf[[i]])}
+))
+
+# Check what kind of Subtrees are in there
+ocls = oclt %>%
+  group_by(Subtree) %>%
+  summarise(
+    Count = length(Subtree),
+    Calvin = sum(Accession %in% posg)/length(Subtree)
+  )
+
+# Check the distribution of the Subtrees on the phylogenetic tree
 gp = ggtree(batr, layout="fan", )
 gp$data = left_join(
   gp$data,
-  oclt %>% mutate(Cluster = as.character(Cluster)) %>% rename(label = Accession)
+  oclt %>% mutate(Subtree = as.character(Subtree)) %>% rename(label = Accession)
 )
-gp = gp + geom_tippoint(mapping=aes(fill=Cluster), shape=24)
+gp = gp + geom_tippoint(mapping=aes(fill=Subtree), shape=24)
 gp = gp + scale_fill_manual(
     values = c(
       "#bf812d", "#f6e8c3", "#9970ab", "#e7d4e8",
@@ -277,14 +289,14 @@ gp = gp + scale_fill_manual(
     )
   )
 
-ggsave("results/ace_bacterial_clusters.pdf", gp, w=40, h=40, units="cm")
+ggsave("results/ace_bacterial_subtrees.pdf", gp, w=40, h=40, units="cm")
 
-# Perform correlation and testing on clusters larger than 20 genomes
-ftpc = bind_rows(lapply(filter(ocls, Count > 20)$Cluster, function(k){
+# Perform correlation and testing on Subtrees larger than 20 genomes
+ftpc = bind_rows(lapply(filter(ocls, Count > 20)$Subtree, function(k){
   # Extract subtree
   cltr = drop.tip(
     batr,
-    setdiff(batr$tip.label, filter(oclt, Cluster == k)$Accession)
+    setdiff(batr$tip.label, filter(oclt, Subtree == k)$Accession)
   )
 
   # Perform Calvin ACE on subtree
@@ -323,11 +335,11 @@ ftpc = bind_rows(lapply(filter(ocls, Count > 20)$Cluster, function(k){
         pStudent = t.test(Enzyme~Calvin, baes)$p.value,
         R = cor(baes$Likelihood, baes$Enzyme),
         pCor = cor.test(baes$Likelihood, baes$Enzyme)$p.value,
-        Cluster = k,
+        Subtree = k,
         Feature = f
       ) %>%
       select(
-        Feature, Cluster, Calvin,
+        Feature, Subtree, Calvin,
         Median, MAD, pWilcox,
         Mean, SD, pStudent,
         R, pCor
@@ -339,7 +351,7 @@ ftpc = bind_rows(lapply(filter(ocls, Count > 20)$Cluster, function(k){
 # Save table; takes some time to generate
 write_tsv(
   ftpc,
-  gzfile("intermediate/feature_history_correlation.bacterial_clusters.tab.gz")
+  gzfile("intermediate/feature_history_correlation.bacterial_subtrees.tab.gz")
 )
 
 # Select only the p-value data
@@ -347,12 +359,12 @@ ftpv = ftpc %>%
   select(-Calvin, -Median, -MAD, -Mean, -SD) %>%
   distinct()
 
-# Use correlation R to select 3 most important Features in each cluster
+# Use correlation R to select 3 most important Features in each Subtree
 topf = ftpv %>%
   filter(is.finite(pWilcox)) %>%
   mutate(padj = p.adjust(pWilcox, method="BH")) %>%
   filter(padj < 0.05) %>%
-  group_by(Cluster) %>%
+  group_by(Subtree) %>%
   top_n(3, abs(R))
 
 # Plot trees for top Features
@@ -360,14 +372,14 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
 
   iftp = topf[i,]
   f = iftp$Feature
-  k = iftp$Cluster
+  k = iftp$Subtree
   R = iftp$R
   p = iftp$padj
 
   # Extract subtree
   cltr = drop.tip(
     batr,
-    setdiff(batr$tip.label, filter(oclt, Cluster == k)$Accession)
+    setdiff(batr$tip.label, filter(oclt, Subtree == k)$Accession)
   )
 
   # Perform Calvin ACE on subtree
@@ -417,7 +429,7 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
 
   ggsave(
     paste(
-      "results/ace_bacteria_clusters_",
+      "results/ace_bacteria_subtrees_",
       k, "_", f, "_R", round(R, 3),
       "_Wilcoxlog10padj", round(log10(p), 1), ".pdf",
       sep=""
