@@ -145,11 +145,6 @@ library(foreach)
 library(doMC)
 registerDoMC(16)
 
-# Generate all subtrees
-ntip = length(batr$tip.label)
-nods = batr$Nnode
-sbts = lapply(1:nods + ntip, function(n){extract.clade(batr, n)})
-
 # Function to calculate a rough similarity between a tree and the archaeal tree
 archsim = function(sbtr){
   suppressMessages(
@@ -179,105 +174,121 @@ archsim = function(sbtr){
   )
 }
 
-# Calculate the similarity of each subtree with > 2 tips to Archaeal tree
-sbsf = bind_rows(lapply(
-  1:length(sbts),
-  function(i){
-    if (length(sbts[[i]]$tip.label) > 2) {
-      archsim(sbts[[i]]) %>%
-        mutate(Subtree = i, Size = length(sbts[[i]]$tip.label))
-    }
-  }
-))
+# Relabel bacterial tree nodes with actual node ID in full tree
+batr$node.label = 1:batr$Nnode + length(batr$tip.label)
 
-sbsm = sbsf %>%
-  # For each Subtree..
-  group_by(Subtree) %>%
-  # Make sure that all Aspects are included (Positive/Negative can be missing)
-  filter(setequal(c("Positive", "Negative", "Height", "CV"), Aspect)) %>%
-  # Calculate the Similarity
-  summarise(Similarity = prod(Factor), Size = unique(Size)) %>%
-  # Add the node in the tree
-  mutate(
-    Node = Subtree + ntip
+# Precompute Subtree Similarity for each node
+sims = bind_rows(foreach(n=1:batr$Nnode + length(batr$tip.label)) %dopar% {
+  TREE = extract.clade(batr, n)
+  tibble(
+    Node = n,
+    Similarity = archsim(TREE) %>% pull(Factor) %>% prod(),
+    Size = TREE$tip.label %>% length()
   )
+})
 
-# Create a table with Subtrees, listing Accessions
-sbtt = bind_rows(lapply(
-  sbsm$Subtree,
-  function(i){tibble(Subtree = i, Accession = sbts[[i]]$tip.label)}
-))
+# Calculate midpoints between heights (to accomodate treeSlice behaviour)
+mpnt = tibble(High = sort(unique(c(nodeHeights(batr))))) %>%
+  mutate(
+    Low = lag(High, 1),
+    Height = (High + Low)/2,
+    Offset = Height - Low
+  ) %>%
+  filter(!is.na(Height))
 
-# Calculate what other trees each tree is compatible with
-tcmp = bind_rows(lapply(
-  sbtt$Subtree %>% unique(),
-  function(i){
-    accs = filter(sbtt, Subtree == i)$Accession
-    sbtt %>%
-      filter(Subtree != i) %>%
-      group_by(Subtree) %>%
-      summarise(Compatible = sum(Accession %in% accs) == 0) %>%
-      filter(Compatible) %>%
-      select(-Compatible) %>%
-      rename(Compatible = Subtree) %>%
-      mutate(Subtree = i)
+# Precompute tree slices
+slcs = bind_rows(foreach(h=mpnt$Height) %dopar% {
+  # Determine the subtrees
+  tryCatch(
+    {
+      tibble(
+        Height = h,
+        Node = unlist(lapply(
+          treeSlice(batr, h),
+          function(sbtr){sbtr$node.label[1]}
+        ))
+      )
+    },
+    # If there is no subtree, do nothing
+    error = function(e) {}
+  )
+})
+
+# Add the root node
+slcs = bind_rows(tibble(Height = 0, Node = batr$node.label[1]), slcs)
+
+# Combine slices and similarities
+slsm = inner_join(slcs, sims) %>%
+  # Tree must have at least 2 nodes for correlation and testing
+  filter(Size > 3)
+
+# Find optimal subtrees as close as possible to Arch. tree properties
+optimal_subtrees = function(n) {
+  # Filter to descendants of node n
+  sbts = slsm %>%
+    filter(Node %in% getDescendants(batr, n))
+
+  # Determine the optimal height
+  hopt = sbts %>%
+    # Calculate the average Similarity for each Height
+    group_by(Height) %>%
+    summarise(Similarity = mean(Similarity)) %>%
+    distinct() %>%
+    top_n(1, Similarity) %>%
+    # In case of multiple top Similarity Heights, select the lowest Height
+    top_n(1, -Height)
+
+  # Fix for when there is no subtree
+  if (nrow(hopt) == 0){hopt=tibble(Similarity = 0)}
+
+  # If Similarity of the tree is better than that of the subtrees...
+  if (filter(sims, Node == n)$Similarity > hopt$Similarity){
+    # ...return the Accessions of the Subtree
+    return(extract.clade(batr, n)$tip.label)
+  } else {
+    # ...otherwise apply analysis recursively to descendants
+    lapply(filter(sbts, Height == hopt$Height)$Node, optimal_subtrees)
   }
-))
-
-# Function to find the Subtrees compatible with all trees in a set of Subtrees
-get_compatible = function(ssbt){
-  tcmp %>%
-    filter(Subtree %in% ssbt) %>%
-    group_by(Compatible) %>%
-    summarise(Count = length(Compatible)) %>%
-    filter(Count == length(ssbt)) %>%
-    pull(Compatible)
 }
 
-# Iteratively select the best subtrees
-sbti = sbsm %>% top_n(1, Similarity) %>% pull(Subtree)
-sims = sbsm %>% filter(Subtree %in% get_compatible(sbti))
+# Get a hierarchical list of lists for the optimal Subtrees
+subo = optimal_subtrees(batr$node.label[1])
 
-while (nrow(sims) > 0) {
-  sbti = c(sbti, sims %>% top_n(1, Similarity) %>% pull(Subtree))
-  sims = sims %>% filter(Subtree %in% get_compatible(sbti))
+# List flattening function by Tommy, 2011
+# https://stackoverflow.com/a/8139959/6018441
+flatten2 <- function(x) {
+  len <- sum(rapply(x, function(x) 1L))
+  y <- vector('list', len)
+  i <- 0L
+  rapply(x, function(x) { i <<- i+1L; y[[i]] <<- x })
+  y
 }
 
-# Compare to previous method
-lapply(oclf, function(x){prod(archsim(keep.tip(batr, x))$Factor)}) %>%
-  unlist() %>% mean()
-# Mean similarity was 0.18
-unlist(oclf) %>% length
-# Number of genomes was 2524
-filter(sbtt, Subtree %in% sbti) %>% nrow
-# Number of genomes is now 2508
-filter(sbsm, Subtree %in% sbti) %>% pull(Similarity) %>% mean
-# ...and mean similarity is 0.075
-filter(sbsm, Subtree %in% sbti) %>%
-  arrange(-Similarity) %>%
-  top_n(16, Similarity) %>%
-  pull(Similarity) %>%
-  mean()
-# Even with the top 16, same number as before, mean similarity is just 0.16
+# Flatten the list
+subf = flatten2(subo)
 
 # Create Subtree table
-oclt = bind_rows(lapply(
-  1:length(oclf), function(i){tibble(Subtree = i, Accession = oclf[[i]])}
+subt = bind_rows(lapply(
+  1:length(subf), function(i){tibble(Subtree = i, Accession = subf[[i]])}
 ))
 
 # Check what kind of Subtrees are in there
-ocls = oclt %>%
+subs = subt %>%
   group_by(Subtree) %>%
   summarise(
     Count = length(Subtree),
     Calvin = sum(Accession %in% posg)/length(Subtree)
   )
 
+# Get rid of trees smaller than 50 genomes
+subs = filter(subs, Count >= 50)
+subt = filter(subt, Subtree %in% subs$Subtree)
+
 # Check the distribution of the Subtrees on the phylogenetic tree
 gp = ggtree(batr, layout="fan", )
 gp$data = left_join(
   gp$data,
-  oclt %>% mutate(Subtree = as.character(Subtree)) %>% rename(label = Accession)
+  subt %>% mutate(Subtree = as.character(Subtree)) %>% rename(label = Accession)
 )
 gp = gp + geom_tippoint(mapping=aes(fill=Subtree), shape=24)
 gp = gp + scale_fill_manual(
@@ -291,32 +302,32 @@ gp = gp + scale_fill_manual(
 
 ggsave("results/ace_bacterial_subtrees.pdf", gp, w=40, h=40, units="cm")
 
-# Perform correlation and testing on Subtrees larger than 20 genomes
-ftpc = bind_rows(lapply(filter(ocls, Count > 20)$Subtree, function(k){
+# Perform correlation and testing on Subtrees
+ftpc = bind_rows(lapply(subs$Subtree, function(k){
   # Extract subtree
-  cltr = drop.tip(
+  sbtr = drop.tip(
     batr,
-    setdiff(batr$tip.label, filter(oclt, Subtree == k)$Accession)
+    setdiff(batr$tip.label, filter(subt, Subtree == k)$Accession)
   )
 
   # Perform Calvin ACE on subtree
-  cpos = ifelse(cltr$tip.label %in% posg, "Positive", "Negative")
-  names(cpos) = cltr$tip.label
-  cACE = ace(cpos, cltr, model="ER", type="discrete")
+  cpos = ifelse(sbtr$tip.label %in% posg, "Positive", "Negative")
+  names(cpos) = sbtr$tip.label
+  cACE = ace(cpos, sbtr, model="ER", type="discrete")
 
   # Analyze
   foreach(f=unique(feat$Feature)) %dopar% {
     # Create feature vector
     baft = feat %>%
       filter(Feature == f) %>%
-      filter(Accession %in% cltr$tip.label) %>%
-      arrange(match(Accession, cltr$tip.label)) %>%
+      filter(Accession %in% sbtr$tip.label) %>%
+      arrange(match(Accession, sbtr$tip.label)) %>%
       pull(Count)
 
-    names(baft) = cltr$tip.label
+    names(baft) = sbtr$tip.label
 
     # Perform ACE on Feature using Brownian Motion model (default)
-    baftACE = fastAnc(cltr, baft)
+    baftACE = fastAnc(sbtr, baft)
 
     # Calculate correlations and p-values
     baes = tibble(
@@ -332,7 +343,6 @@ ftpc = bind_rows(lapply(filter(ocls, Count > 20)$Subtree, function(k){
       ) %>%
       mutate(
         pWilcox = wilcox.test(Enzyme~Calvin, baes)$p.value,
-        pStudent = t.test(Enzyme~Calvin, baes)$p.value,
         R = cor(baes$Likelihood, baes$Enzyme),
         pCor = cor.test(baes$Likelihood, baes$Enzyme)$p.value,
         Subtree = k,
@@ -341,8 +351,7 @@ ftpc = bind_rows(lapply(filter(ocls, Count > 20)$Subtree, function(k){
       select(
         Feature, Subtree, Calvin,
         Median, MAD, pWilcox,
-        Mean, SD, pStudent,
-        R, pCor
+        Mean, SD, R, pCor
       )
     } %>% bind_rows()
   }
@@ -362,10 +371,13 @@ ftpv = ftpc %>%
 # Use correlation R to select 3 most important Features in each Subtree
 topf = ftpv %>%
   filter(is.finite(pWilcox)) %>%
-  mutate(padj = p.adjust(pWilcox, method="BH")) %>%
-  filter(padj < 0.05) %>%
+  mutate(
+    padjW = p.adjust(pWilcox, method="BH"),
+    padjC = p.adjust(pCor, method="BH")
+  ) %>%
+  filter(padjW < 0.05 & padjC < 0.05) %>%
   group_by(Subtree) %>%
-  top_n(3, abs(R))
+  top_n(5, abs(R))
 
 # Plot trees for top Features
 garbage = foreach(i=1:nrow(topf)) %dopar% {
@@ -374,30 +386,31 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
   f = iftp$Feature
   k = iftp$Subtree
   R = iftp$R
-  p = iftp$padj
+  pW = iftp$padjW
+  pC = iftp$padjC
 
   # Extract subtree
-  cltr = drop.tip(
+  sbtr = drop.tip(
     batr,
-    setdiff(batr$tip.label, filter(oclt, Subtree == k)$Accession)
+    setdiff(batr$tip.label, filter(subt, Subtree == k)$Accession)
   )
 
   # Perform Calvin ACE on subtree
-  cpos = ifelse(cltr$tip.label %in% posg, "Positive", "Negative")
-  names(cpos) = cltr$tip.label
-  cACE = ace(cpos, cltr, model="ER", type="discrete")
+  cpos = ifelse(sbtr$tip.label %in% posg, "Positive", "Negative")
+  names(cpos) = sbtr$tip.label
+  cACE = ace(cpos, sbtr, model="ER", type="discrete")
 
   # Create feature vector
   baft = feat %>%
     filter(Feature == f) %>%
-    filter(Accession %in% cltr$tip.label) %>%
-    arrange(match(Accession, cltr$tip.label)) %>%
+    filter(Accession %in% sbtr$tip.label) %>%
+    arrange(match(Accession, sbtr$tip.label)) %>%
     pull(Count)
 
-  names(baft) = cltr$tip.label
+  names(baft) = sbtr$tip.label
 
   # Perform ACE on Feature using Brownian Motion model (default)
-  baftACE = fastAnc(cltr, baft)
+  baftACE = fastAnc(sbtr, baft)
 
   # Prepare extra variables
   bant = tibble(
@@ -406,17 +419,17 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
       pull(Positive),
     Feature = baftACE
   ) %>%
-    mutate(node = 1:nrow(.) + length(cltr$tip.label)) %>%
+    mutate(node = 1:nrow(.) + length(sbtr$tip.label)) %>%
     bind_rows(
       tibble(
-        node = 1:length(cltr$tip.label),
+        node = 1:length(sbtr$tip.label),
         Feature = baft,
         Calvin = ifelse(cpos == "Positive", 1, 0)
       )
     )
 
   # Plot tree
-  gp = ggtree(cltr, aes(colour=Feature), layout="fan")
+  gp = ggtree(sbtr, aes(colour=Feature), layout="fan")
   gp$data = gp$data %>% inner_join(bant) # Add extra variables
   gp = gp + geom_nodepoint(mapping=aes(fill=Calvin), shape=21)
   gp = gp + geom_tippoint(mapping=aes(fill=Calvin), shape=24)
@@ -425,13 +438,16 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
     high="#5ab4ac", mid="#f5f5f5", low="#d8b365", midpoint=0.5
   )
 
-  sclf = max(c(sqrt(length(cltr$tip.label) / length(artr$tip.label)), 1))
+  sclf = max(c(sqrt(length(sbtr$tip.label) / length(artr$tip.label)), 1))
 
   ggsave(
     paste(
       "results/ace_bacteria_subtrees_",
-      k, "_", f, "_R", round(R, 3),
-      "_Wilcoxlog10padj", round(log10(p), 1), ".pdf",
+      k, "_", f,
+      "_R", round(R, 3),
+      "_Wilcoxlog10padj", round(log10(pW), 1),
+      "_Corlog10padj", round(log10(pC), 1),
+      ".pdf",
       sep=""
     ),
     gp, w=sclf*15, h=sclf*12, units="cm", limitsize=F
