@@ -22,6 +22,10 @@ parser.add_argument('--taxonomy', type=str, help='Load taxonomy.')
 parser.add_argument('--importances', type=str, help='Save importances.')
 parser.add_argument('--predictions', type=str, help='Save predictions.')
 parser.add_argument(
+    '--phy_fil', action='store_true', default=False,
+    help='Filter out features marking phylogenetic groups within classes.'
+)
+parser.add_argument(
     '--var_cut', action='store_true', default=False,
     help='Select features with variance before phylogenetic filter.'
 )
@@ -43,6 +47,7 @@ importance_file   = args.importances
 prediction_file   = args.predictions
 
 # Store flags
+phy_fil = args.phy_fil
 var_cut = args.var_cut
 lgr_cut = args.lgr_cut
 
@@ -111,23 +116,30 @@ if var_cut:
     X = X[:,varf]
     feature_list = list(np.array(feature_list)[varf])
 
-# Find phylogenetically biased features for positive genomes
-bias_1 = find_bias(np.array(accession_list)[y == 1], X[y == 1,:])
-print("Found " + str(len(bias_1)) + " biased features for positive genomes.")
-print("")
+if phy_fil:
+    # Find phylogenetically biased features for positive genomes
+    bias_1 = find_bias(np.array(accession_list)[y == 1], X[y == 1,:])
+    print("Found "+str(len(bias_1))+" biased features for positive genomes.")
+    print("")
 
-# Find phylogenetically biased features for negative genomes
-bias_0 = find_bias(np.array(accession_list)[y == 0], X[y == 0,:])
-print("Found " + str(len(bias_0)) + " biased features for negative genomes.")
-print("")
+    # Find phylogenetically biased features for negative genomes
+    bias_0 = find_bias(np.array(accession_list)[y == 0], X[y == 0,:])
+    print("Found "+str(len(bias_0))+" biased features for negative genomes.")
+    print("")
 
-# Report the total number of phylogenetically biased features identified
-phylogenetically_biased_features = bias_1 | bias_0
-print("Total biased features: " + str(len(phylogenetically_biased_features)))
-print("")
+    # Report the total number of phylogenetically biased features identified
+    phy_biased_features = bias_1 | bias_0
+    print("Total biased features: "+str(len(phy_biased_features)))
+    print("")
 
-# Filter the input features to those that are not phylogenetically biased
-f = np.array([x not in phylogenetically_biased_features for x in feature_list])
+    # Filter the input features to those that are not phylogenetically biased
+    f = np.array([x not in phy_biased_features for x in feature_list])
+
+else:
+    # Without phylogenetic bias filter, keep all features
+    f = np.array([True for x in feature_list])
+
+# Filter features by f
 X_f = X[:,f]
 feature_list_f = list(np.array(feature_list)[f])
 
@@ -135,7 +147,8 @@ if lgr_cut:
     # Select most promising features using logistic regression
     rfe = RFE(
         estimator=LogisticRegression(),
-        n_features_to_select=int(np.ceil(0.25*X_f.shape[1])),
+#        n_features_to_select=int(np.ceil(0.25*X_f.shape[1])),
+        n_features_to_select = 600,
         step=10, verbose=0
     )
     rfe.fit(X_f, y)
