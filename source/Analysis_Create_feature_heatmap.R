@@ -48,44 +48,44 @@ pfam = read_csv(
   group_by(Feature) %>%
   mutate(Value = (Count - min(Count))/(max(Count) - min(Count)))
 
-ecal = read_csv(
-  "intermediate/alignment_features.X.csv.gz",
-  col_names = scan(
-    "intermediate/alignment_features.feature_names.txt", character()
-    )
-  ) %>%
-  # Add Accession IDs
-  mutate(
-    Accession = scan(
-      "intermediate/alignment_features.accession_ids.txt", character()
-    )
-  ) %>%
-  # Gather into long format
-  gather(Feature, Value, -Accession) %>%
-  # Store origin of Data
-  mutate(Data = "Alignment")
+# ecal = read_csv(
+#   "intermediate/alignment_features.X.csv.gz",
+#   col_names = scan(
+#     "intermediate/alignment_features.feature_names.txt", character()
+#     )
+#   ) %>%
+#   # Add Accession IDs
+#   mutate(
+#     Accession = scan(
+#       "intermediate/alignment_features.accession_ids.txt", character()
+#     )
+#   ) %>%
+#   # Gather into long format
+#   gather(Feature, Value, -Accession) %>%
+#   # Store origin of Data
+#   mutate(Data = "Alignment")
 
 # Load prediction and importance data
-alim = read_tsv("intermediate/alignment_features.importance.tab.gz")
-alpr = read_tsv("intermediate/alignment_features.prediction.tab.gz")
+# alim = read_tsv("intermediate/alignment_features.importance.tab.gz")
+# alpr = read_tsv("intermediate/alignment_features.prediction.tab.gz")
 ecim = read_tsv("intermediate/EC_count_features.importance.tab.gz")
 ecpr = read_tsv("intermediate/EC_count_features.prediction.tab.gz")
 pfim = read_tsv("intermediate/pfam_features.importance.tab.gz")
 pfpr = read_tsv("intermediate/pfam_features.prediction.tab.gz")
 
 # Calculate average Importance, select top 300, and order Feature
-alim = alim %>%
-  group_by(Feature) %>%
-  summarise(Importance = mean(Importance)) %>%
-  top_n(200, Importance) %>%
-  arrange(Importance)
-ecal = ecal %>%
-  inner_join(alim)
+# alim = alim %>%
+#   group_by(Feature) %>%
+#   summarise(Importance = mean(Importance)) %>%
+#   top_n(200, Importance) %>%
+#   arrange(Importance)
+# ecal = ecal %>%
+#   inner_join(alim)
 
 ecim = ecim %>%
   group_by(Feature) %>%
   summarise(Importance = mean(Importance)) %>%
-  top_n(200, Importance) %>%
+  top_n(300, Importance) %>%
   arrange(Importance)
 dpec = dpec %>%
   inner_join(ecim) %>%
@@ -94,17 +94,17 @@ dpec = dpec %>%
 pfim = pfim %>%
   group_by(Feature) %>%
   summarise(Importance = mean(Importance)) %>%
-  top_n(200, Importance) %>%
+  top_n(300, Importance) %>%
   arrange(Importance)
 pfam = pfam %>%
   inner_join(pfim) %>%
   ungroup()
 
 # Calculate average Accuracy for each Accession, and order Accession
-alac = alpr %>%
-  group_by(Accession) %>%
-  summarise(Accuracy = sum(Prediction == Class) / length(Class)) %>%
-  mutate(Data = "Alignment")
+# alac = alpr %>%
+#   group_by(Accession) %>%
+#   summarise(Accuracy = sum(Prediction == Class) / length(Class)) %>%
+#   mutate(Data = "Alignment")
 
 ecac = ecpr %>%
   group_by(Accession) %>%
@@ -116,7 +116,8 @@ pfac = pfpr %>%
   summarise(Accuracy = sum(Prediction == Class) / length(Class)) %>%
   mutate(Data = "Pfam")
 
-accu = bind_rows(alac, ecac, pfac)
+# accu = bind_rows(alac, ecac, pfac)
+accu = bind_rows( ecac, pfac)
 avac = accu %>%
   group_by(Accession) %>%
   summarise(Accuracy = mean(Accuracy)) %>%
@@ -134,12 +135,14 @@ comp = comp %>%
   mutate(Accession = factor(Accession, levels=avac$Accession))
 
 # Combine Values and order Accession according to Class, Accuracy, and Group
-fval = bind_rows(select(dpec, -Count), select(pfam, -Count), ecal) %>%
+#fval = bind_rows(select(dpec, -Count), select(pfam, -Count), ecal) %>%
+fval = bind_rows(select(dpec, -Count), select(pfam, -Count)) %>%
   inner_join(select(avac, -Accuracy, -SortValue)) %>%
   mutate(
     Feature = factor(
       Feature,
-      levels=c(pfim$Feature, ecim$Feature, alim$Feature)
+#      levels=c(pfim$Feature, ecim$Feature, alim$Feature)
+    levels=c(pfim$Feature, ecim$Feature)
     ),
     Accession = factor(Accession, levels=avac$Accession),
     Data = factor(Data, levels = c("Pfam", "EC", "Alignment"))
