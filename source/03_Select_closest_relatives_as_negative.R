@@ -4,7 +4,7 @@ library(tidyverse)
 # Define infiles
 bacdist_file = "intermediate/bacteria.dist"
 arcdist_file = "intermediate/archaea.dist"
-posg_file = "intermediate/positive_genomes.ace.txt"
+posg_file = "data/positive_genomes.txt"
 
 # Load data
 bacdist = read_delim(bacdist_file, " ", skip=1, col_names=F)

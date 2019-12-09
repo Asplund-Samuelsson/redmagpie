@@ -6,14 +6,16 @@ library(ggtree)
 
 # Define infiles
 artr_file = "intermediate/archaea.tree"
-batr_file = "intermediate/bacteria_midpoint_rooted_tree.Rdata"
+# batr_file = "intermediate/bacteria_midpoint_rooted_tree.Rdata"
+batr_file = "intermediate/bacteria.tree"
 exgn_file = "intermediate/example_genomes.tab"
 ecim_file = "intermediate/EC_count_features.importance.tab.gz"
 pfim_file = "intermediate/pfam_features.importance.tab.gz"
 
 # Load data
 artr = read.tree(artr_file)
-load(batr_file) # Loads "batr" object; Already midpoint-rooted bacterial tree
+# load(batr_file) # Loads "batr" object; Already midpoint-rooted bacterial tree
+batr = read.tree(batr_file)
 exgn = read_tsv(exgn_file)
 ecim = read_tsv(ecim_file)
 pfim = read_tsv(pfim_file)
@@ -61,8 +63,9 @@ pfam = read_csv(
 # Combine features
 feat = bind_rows(dpec, pfam)
 
-# Root Archaeal tree (Bacterial tree is already rooted)
+# Root trees
 artr = midpoint.root2(artr)
+batr = midpoint.root2(batr) # Slow! Alternatively, load already created object
 
 # Prune trees to example genomes
 artr = drop.tip(artr, setdiff(artr$tip.label, c(exgn$Genome, exgn$Relative)))
