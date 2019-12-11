@@ -98,8 +98,8 @@ ftpc = foreach(f=unique(feat$Feature)) %dopar% {
     ) %>%
     mutate(
       pWilcox = wilcox.test(Enzyme~Calvin, aaes)$p.value,
-      R = cor(aaes$Likelihood, aaes$Enzyme),
-      pCor = cor.test(aaes$Likelihood, aaes$Enzyme)$p.value,
+      R = cor(aaes$Likelihood, aaes$Enzyme, method="spearman"),
+      pCor = cor.test(aaes$Likelihood, aaes$Enzyme, method="spearman")$p.value,
       Domain = "Archaea",
       Feature = f
     ) %>% select(

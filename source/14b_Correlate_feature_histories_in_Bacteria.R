@@ -6,27 +6,18 @@ library(ggtree)
 
 # Define infiles
 artr_file = "intermediate/archaea.tree"
-# batr_file = "intermediate/bacteria_midpoint_rooted_tree.Rdata"
-batr_file = "intermediate/bacteria.tree"
+batr_file = "intermediate/bacteria_midpoint_rooted_tree.Rdata"
+# batr_file = "intermediate/bacteria.tree"
 exgn_file = "intermediate/example_genomes.tab"
 ecim_file = "intermediate/EC_count_features.importance.tab.gz"
 pfim_file = "intermediate/pfam_features.importance.tab.gz"
 
 # Load data
 artr = read.tree(artr_file)
-# load(batr_file) # Loads "batr" object; Already midpoint-rooted bacterial tree
-batr = read.tree(batr_file)
+load(batr_file) # Loads "batr" object; Already midpoint-rooted bacterial tree
+# batr = read.tree(batr_file)
 exgn = read_tsv(exgn_file)
-ecim = read_tsv(ecim_file)
-pfim = read_tsv(pfim_file)
 posg = exgn$Genome
-
-# Calculate average importances
-avim = bind_rows(ecim, pfim) %>%
-  group_by(Feature) %>%
-  summarise(Importance = mean(Importance)) %>%
-  arrange(-Importance) %>%
-  mutate(Type = ifelse(str_starts(Feature, "EC"), "EC", "Pfam"))
 
 # Load features
 dpec = read_csv(
@@ -65,7 +56,7 @@ feat = bind_rows(dpec, pfam)
 
 # Root trees
 artr = midpoint.root2(artr)
-batr = midpoint.root2(batr) # Slow! Alternatively, load already created object
+# batr = midpoint.root2(batr) # Slow! Alternatively, load already created object
 
 # Prune trees to example genomes
 artr = drop.tip(artr, setdiff(artr$tip.label, c(exgn$Genome, exgn$Relative)))
@@ -346,8 +337,8 @@ ftpc = bind_rows(lapply(subs$Subtree, function(k){
       ) %>%
       mutate(
         pWilcox = wilcox.test(Enzyme~Calvin, baes)$p.value,
-        R = cor(baes$Likelihood, baes$Enzyme),
-        pCor = cor.test(baes$Likelihood, baes$Enzyme)$p.value,
+        R = cor(baes$Likelihood, baes$Enzyme, method="spear"),
+        pCor = cor.test(baes$Likelihood, baes$Enzyme, method="spear")$p.value,
         Subtree = k,
         Feature = f
       ) %>%

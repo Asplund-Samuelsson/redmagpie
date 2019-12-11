@@ -4,7 +4,7 @@
 DATA="EC_count_features"
 echo "Using ${DATA}"
 
-source/11_Rank_features_with_random_forest.py \
+source/10_Rank_features_with_random_forest.py \
   --features      intermediate/${DATA}.X.csv.gz \
   --classes       intermediate/${DATA}.y.txt \
   --feature_names intermediate/${DATA}.feature_names.txt \
@@ -23,7 +23,7 @@ pigz intermediate/${DATA}.importance.tab intermediate/${DATA}.prediction.tab
 DATA="alignment_features"
 echo "Using ${DATA}"
 
-source/11_Rank_features_with_random_forest.py \
+source/10_Rank_features_with_random_forest.py \
   --features      intermediate/${DATA}.X.csv.gz \
   --classes       intermediate/${DATA}.y.txt \
   --feature_names intermediate/${DATA}.feature_names.txt \
@@ -43,7 +43,7 @@ pigz intermediate/${DATA}.importance.tab intermediate/${DATA}.prediction.tab
 DATA="pfam_features"
 echo "Using ${DATA}"
 
-source/11_Rank_features_with_random_forest.py \
+source/10_Rank_features_with_random_forest.py \
   --features      intermediate/${DATA}.X.csv.gz \
   --classes       intermediate/${DATA}.y.txt \
   --feature_names intermediate/${DATA}.feature_names.txt \
