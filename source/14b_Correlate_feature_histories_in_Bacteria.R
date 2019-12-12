@@ -11,6 +11,7 @@ batr_file = "intermediate/bacteria_midpoint_rooted_tree.Rdata"
 exgn_file = "intermediate/example_genomes.tab"
 ecim_file = "intermediate/EC_count_features.importance.tab.gz"
 pfim_file = "intermediate/pfam_features.importance.tab.gz"
+taxo_file = "intermediate/accession_taxonomy.tab"
 
 # Load data
 artr = read.tree(artr_file)
@@ -18,6 +19,7 @@ load(batr_file) # Loads "batr" object; Already midpoint-rooted bacterial tree
 # batr = read.tree(batr_file)
 exgn = read_tsv(exgn_file)
 posg = exgn$Genome
+taxo = read_tsv(taxo_file)
 
 # Load features
 dpec = read_csv(
@@ -296,6 +298,14 @@ gp = gp + scale_fill_manual(
 
 ggsave("results/ace_bacterial_subtrees.pdf", gp, w=40, h=40, units="cm")
 
+# Save subtree table
+write_tsv(
+  bind_rows(lapply(
+    1:length(subf), function(i){tibble(Subtree = i, Accession = subf[[i]])}
+  )),
+  "intermediate/ace_bacterial_subtrees.tab"
+)
+
 # Perform correlation and testing on Subtrees
 ftpc = bind_rows(lapply(subs$Subtree, function(k){
   # Extract subtree
@@ -373,6 +383,115 @@ topf = ftpv %>%
   group_by(Subtree) %>%
   top_n(5, abs(R))
 
+# Determine top Orders
+min_count = 30
+
+orgs = taxo %>%
+  # Select genomes in the selected subtrees
+  filter(Accession %in% subt$Accession) %>%
+  # Count genomes in each Order
+  group_by(Group, Order) %>%
+  # Use Group instead of Order if min_count is not achieved
+  mutate(
+    Organism0 = ifelse(
+      length(Accession) >= min_count,
+      Order,
+      ifelse(
+        Group %in% filter(., length(Accession) >= min_count)$Group,
+        paste("Other", Group),
+        Group
+      )
+    )
+  ) %>%
+  # Count genomes for each Organism
+  group_by(Organism0) %>%
+  # Set to "Other Bacteria" unless min_count is achieved
+  mutate(
+    Organism = ifelse(
+      length(Accession) >= min_count,
+      Organism0,
+      "Other Bacteria"
+    )
+  )
+
+# Count the number of genomes in each Organism set
+orgc = orgs %>%
+  group_by(Organism) %>%
+  summarise(Count = length(Accession)) %>%
+  # Add back Group
+  left_join(
+    orgs %>%
+      ungroup() %>%
+      select(Group, Organism) %>%
+      mutate(Group = ifelse(Organism == "Other Bacteria", NA, Group)) %>%
+      distinct()
+    ) %>%
+  arrange(-Count)
+
+# Decide Colour
+gmpr = c("#8e0152", "#c51b7d", "#de77ae", "#f1b6da", "#fde0ef")
+alpr = c("#e66101", "#fdb863")
+actn = c("#5e3c99", "#b2abd2")
+frmc = "#67a9cf"
+othr = "#f7f7f7"
+
+orgc = orgc %>%
+  arrange(Group, -Count) %>%
+  mutate(Colour = c(actn, alpr, frmc, gmpr, othr))
+
+#    Organism                  Count Group               Colour
+#    <chr>                     <int> <chr>               <chr>
+#  1 Mycobacteriales             146 Actinobacteriota    #5e3c99
+#  2 Other Actinobacteriota      108 Actinobacteriota    #b2abd2
+#  3 Rhizobiales                 392 Alphaproteobacteria #e66101
+#  4 Rhodobacterales             168 Alphaproteobacteria #fdb863
+#  5 Firmicutes                   41 Firmicutes          #67a9cf
+#  6 Burkholderiales             578 Gammaproteobacteria #8e0152
+#  7 Other Gammaproteobacteria   185 Gammaproteobacteria #c51b7d
+#  8 Pseudomonadales             129 Gammaproteobacteria #de77ae
+#  9 Enterobacterales             43 Gammaproteobacteria #f1b6da
+# 10 Chromatiales                 40 Gammaproteobacteria #fde0ef
+# 11 Other Bacteria               89 NA                  #f7f7f7
+
+# Add colour to Organism to Accession association
+orgs = inner_join(orgs, select(orgc, Organism, Colour))
+
+library(ggnewscale)
+
+# Create dataframe with group association for heatmap
+txfl = data.frame(
+  row.names = orgs$Accession,
+  Organism = orgs$Colour,
+  stringsAsFactors=F
+)
+tfls = txfl[batr$tip.label, , drop=F]
+
+# Check the distribution of the Subtrees on the phylogenetic tree
+gp = ggtree(batr, layout="fan", )
+gp$data = left_join(
+  gp$data,
+  subt %>% mutate(Subtree = as.character(Subtree)) %>% rename(label = Accession)
+)
+gp = gp + geom_tippoint(mapping=aes(fill=Subtree), shape=24)
+gp = gp + scale_fill_manual(
+    values = c(
+      "#bf812d", "#f6e8c3", "#9970ab", "#e7d4e8",
+      "#35978f", "#c7eae5", "#1b7837", "#a6dba0",
+      "#8c510a", "#dfc27d", "#762a83", "#c2a5cf",
+      "#01665e", "#80cdc1", "#5aae61", "#d9f0d3"
+    )
+  )
+gp = gp + new_scale_fill()
+gp = gheatmap(
+  gp, tfls,
+  offset=.05, width=.05, colnames=F,
+  color = NA
+)
+gp = gp + scale_fill_identity()
+
+ggsave("results/ace_bacterial_subtrees.orgs.pdf", gp, w=40, h=40, units="cm")
+
+
 # Plot trees for top Features
 garbage = foreach(i=1:nrow(topf)) %dopar% {
 
@@ -422,6 +541,9 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
       )
     )
 
+  # Create dataframe with group association for heatmap
+  tfls = txfl[sbtr$tip.label, , drop=F]
+
   # Plot tree
   gp = ggtree(sbtr, aes(colour=Feature), layout="fan")
   gp$data = gp$data %>% inner_join(bant) # Add extra variables
@@ -431,6 +553,14 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
   gp = gp + scale_fill_gradient2(
     high="#5ab4ac", mid="#f5f5f5", low="#d8b365", midpoint=0.5
   )
+  gp = gp + new_scale_fill()
+  gp = gheatmap(
+    gp, tfls,
+    offset = 0.05, width = 0.05, colnames = F,
+    color = NA
+  )
+  gp = gp + scale_fill_identity()
+  gp
 
   sclf = max(c(sqrt(length(sbtr$tip.label) / length(artr$tip.label)), 1))
 
