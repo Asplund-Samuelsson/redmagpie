@@ -121,9 +121,17 @@ corr = comp %>%
   summarise(
     EN_AC = cor(nLog10padj, R2, use="complete.obs", method="spearman"),
     EN_RF = cor(nLog10padj, Importance, use="complete.obs", method="spearman"),
-    AC_RF = cor(R2, Importance, use="complete.obs", method="spearman")
+    AC_RF = cor(R2, Importance, use="complete.obs", method="spearman"),
+    pEN_AC = cor.test(nLog10padj, R2, method="spearman")$p.value,
+    pEN_RF = cor.test(nLog10padj, Importance, method="spearman")$p.value,
+    pAC_RF = cor.test(R2, Importance, method="spearman")$p.value
   ) %>%
-  gather(Pair, R, -Type)
+  gather(Pair, R, -Type) %>%
+  mutate(
+    Value = ifelse(startsWith(Pair, "p"), "p", "R"),
+    Pair = str_remove(Pair, "p")
+  ) %>%
+  spread(Value, R)
 
 write_tsv(corr, "results/method_correlation.tab")
 

@@ -10,6 +10,7 @@ exgn_file = "intermediate/example_genomes.tab"
 ecim_file = "intermediate/EC_count_features.importance.tab.gz"
 pfim_file = "intermediate/pfam_features.importance.tab.gz"
 taxo_file = "intermediate/accession_taxonomy.tab"
+orgs_file = "intermediate/accession_organism_colours.tab"
 
 # Load data
 artr = read.tree(artr_file)
@@ -18,6 +19,7 @@ ecim = read_tsv(ecim_file)
 pfim = read_tsv(pfim_file)
 posg = exgn$Genome
 taxo = read_tsv(taxo_file)
+orgs = read_tsv(orgs_file)
 
 # Load features
 dpec = read_csv(
@@ -130,67 +132,6 @@ topf = ftpv %>%
   ) %>%
   filter(padjW < 0.05 & padjC < 0.05) %>%
   top_n(10, abs(R))
-
-# Determine top Orders
-min_count = 10
-
-orgs = taxo %>%
-  # Select genomes among selected Archaea
-  filter(Accession %in% artr$tip.label) %>%
-  # Count genomes in each Order
-  group_by(Group, Order) %>%
-  # Use Group instead of Order if min_count is not achieved
-  mutate(
-    Organism0 = ifelse(
-      length(Accession) >= min_count,
-      Order,
-      ifelse(
-        Group %in% filter(., length(Accession) >= min_count)$Group,
-        paste("Other", Group),
-        Group
-      )
-    )
-  ) %>%
-  # Count genomes for each Organism
-  group_by(Organism0) %>%
-  # Set to "Other Archaea" unless min_count is achieved
-  mutate(
-    Organism = ifelse(
-      length(Accession) >= min_count,
-      Organism0,
-      "Other Archaea"
-    )
-  )
-
-# Count the number of genomes in each Organism set
-orgc = orgs %>%
-  group_by(Organism) %>%
-  summarise(Count = length(Accession)) %>%
-  # Add back Group
-  left_join(
-    orgs %>%
-      ungroup() %>%
-      select(Group, Organism) %>%
-      mutate(Group = ifelse(Organism == "Other Archaea", NA, Group)) %>%
-      distinct()
-    ) %>%
-  arrange(-Count)
-
-# Decide Colour
-orgc = orgc %>%
-  arrange(Group, -Count) %>%
-  mutate(Colour = c("#1b7837", "#5aae61", "#a6dba0", "#d9f0d3", "#e7d4e8"))
-
-#   Organism           Count Group         Colour
-#   <chr>              <int> <chr>         <chr>
-# 1 Methanomicrobiales    71 Halobacterota #1b7837
-# 2 Methanosarcinales     34 Halobacterota #5aae61
-# 3 Archaeoglobales       17 Halobacterota #a6dba0
-# 4 Methanotrichales      13 Halobacterota #d9f0d3
-# 5 Other Archaea         15 NA            #e7d4e8
-
-# Add colour to Organism to Accession association
-orgs = inner_join(orgs, select(orgc, Organism, Colour))
 
 library(ggnewscale)
 
