@@ -118,20 +118,29 @@ write_tsv(
   ftpc, gzfile("intermediate/feature_history_correlation.archaeal_tree.tab.gz")
 )
 
+# ftpc = read_tsv("intermediate/feature_history_correlation.archaeal_tree.tab.gz")
+
 # Select only the p-value data
 ftpv = ftpc %>%
   select(-Calvin, -Median, -MAD, -Mean, -SD) %>%
   distinct()
 
-# Use correlation R to select 10 most important Features
+# Use correlation R to select 10 most important Features + more
 topf = ftpv %>%
   filter(is.finite(pWilcox)) %>%
   mutate(
     padjW = p.adjust(pWilcox, method="BH"),
     padjC = p.adjust(pCor, method="BH")
   ) %>%
-  filter(padjW < 0.05 & padjC < 0.05) %>%
-  top_n(10, abs(R))
+  filter(padjW < 0.05 & padjC < 0.05)
+
+topf = topf %>%
+  filter(
+    Feature %in% c(
+      top_n(., 10, abs(R))$Feature,
+      "PF17866.1", "PF01591.18"
+  )
+)
 
 library(ggnewscale)
 
@@ -200,6 +209,7 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
     offset = 0.05, width = 0.05, colnames = F, color=NA
   )
   gp = gp + scale_fill_identity()
+  gp = gp + geom_treescale(x=0, y=0, fontsize=3)
 
   ggsave(
     paste(

@@ -268,6 +268,8 @@ subt = bind_rows(lapply(
   1:length(subf), function(i){tibble(Subtree = i, Accession = subf[[i]])}
 ))
 
+# subt = read_tsv("intermediate/ace_bacterial_subtrees.tab")
+
 # Check what kind of Subtrees are in there
 subs = subt %>%
   group_by(Subtree) %>%
@@ -349,6 +351,8 @@ write_tsv(
   gzfile("intermediate/feature_history_correlation.bacterial_subtrees.tab.gz")
 )
 
+# ftpc = read_tsv("intermediate/feature_history_correlation.bacterial_subtrees.tab.gz")
+
 # Select only the p-value data
 ftpv = ftpc %>%
   select(-Calvin, -Median, -MAD, -Mean, -SD) %>%
@@ -375,21 +379,61 @@ txfl = data.frame(
 )
 tfls = txfl[batr$tip.label, , drop=F]
 
+# Prepare extra variables
+bant = tibble(
+  Calvin = bACE$lik.anc %>%
+    as_tibble() %>%
+    pull(Positive)
+) %>%
+  mutate(node = 1:nrow(.) + length(batr$tip.label)) %>%
+  bind_rows(
+    tibble(
+      node = 1:length(batr$tip.label),
+      Calvin = ifelse(bpos == "Positive", 1, 0)
+    )
+  )
+
+# Calculate last common ancestors of subtrees
+clrs = c(
+  "#bf812d", "#f6e8c3", "#9970ab", "#e7d4e8",
+  "#35978f", "#c7eae5", "#1b7837", "#a6dba0",
+  "#8c510a", "#dfc27d", "#762a83", "#c2a5cf",
+  "#01665e", "#80cdc1", "#5aae61", "#d9f0d3"
+)
+
+mrca = bind_rows(lapply(
+  unique(subt$Subtree),
+  function(x){
+    tibble(
+      Subtree=x,
+      node=findMRCA(batr, filter(subt, Subtree == x)$Accession)
+    )
+  }
+)) %>%
+  mutate(Colour = clrs[1:nrow(.)])
+
 # Check the distribution of the Subtrees on the phylogenetic tree
 gp = ggtree(batr, layout="fan")
 gp$data = left_join(
   gp$data,
   subt %>% mutate(Subtree = as.character(Subtree)) %>% rename(label = Accession)
-)
-gp = gp + geom_tippoint(mapping=aes(fill=Subtree), shape=24)
-gp = gp + scale_fill_manual(
-    values = c(
-      "#bf812d", "#f6e8c3", "#9970ab", "#e7d4e8",
-      "#35978f", "#c7eae5", "#1b7837", "#a6dba0",
-      "#8c510a", "#dfc27d", "#762a83", "#c2a5cf",
-      "#01665e", "#80cdc1", "#5aae61", "#d9f0d3"
-    )
+) %>% inner_join(bant)
+for (n in mrca$node){
+  gp = gp + geom_hilight(node=n, fill="lightgrey")
+  gp = gp + geom_cladelabel(
+    node=n, label=filter(mrca, node == n)$Subtree, offset.text=0.05
   )
+}
+gp = gp + scale_fill_manual(
+
+)
+gp = gp + new_scale_fill()
+gp = gp + geom_nodepoint(mapping=aes(fill=Calvin), shape=21)
+gp = gp + geom_tippoint(mapping=aes(fill=Calvin), shape=24)
+gp = gp + scale_colour_viridis_c(option="B")
+gp = gp + scale_fill_gradient2(
+  high="#5ab4ac", mid="#f5f5f5", low="#d8b365", midpoint=0.5
+)
 gp = gp + new_scale_fill()
 gp = gheatmap(
   gp, tfls,
@@ -397,8 +441,9 @@ gp = gheatmap(
   color = NA
 )
 gp = gp + scale_fill_identity()
+gp = gp + geom_treescale(x=1.9, y=0, fontsize=3)
 
-ggsave("results/ace_bacterial_subtrees.orgs.pdf", gp, w=40, h=40, units="cm")
+ggsave("results/ace_bacterial_subtrees.orgs.pdf", gp, w=30, h=30, units="cm")
 
 
 # Plot trees for top Features
@@ -469,7 +514,7 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
     color = NA
   )
   gp = gp + scale_fill_identity()
-  gp
+  gp = gp + geom_treescale(x=0, y=0, fontsize=3)
 
   sclf = max(c(sqrt(length(sbtr$tip.label) / length(artr$tip.label)), 1))
 
