@@ -245,12 +245,13 @@ normrank = function(x){
 }
 
 copp = rnks %>%
-  mutate(A = normrank(A), E = normrank(E), R = normrank(R)) %>%
   gather(Method, Rank, -Feature) %>%
   # Keep only features that are significant
   inner_join(sigf) %>%
-  # Remove features that occur in only one method
+  # Normalize rank after removing insignificant features
   spread(Method, Rank) %>%
+  mutate(A = normrank(A), E = normrank(E), R = normrank(R)) %>%
+  # Remove features that occur in only one method
   filter((is.na(A) + is.na(E) + is.na(R)) < 2) %>%
   gather(Method, Rank, -Feature) %>%
   filter(!is.na(Rank)) %>%
@@ -272,23 +273,24 @@ copp = rnks %>%
     )
   )
 
-gp = ggplot(copp, aes(x=Feature, color=Rank, y=Method))
-gp = gp + geom_jitter(size=1)
+gp = ggplot(copp, aes(y=as.numeric(Feature), color=Rank, x=Method))
+gp = gp + geom_violin(fill=NA)
+gp = gp + geom_jitter(size=1, alpha=0.9)
 
 # Add correlations
-gp = gp + scale_x_discrete(expand=expand_scale(add=c(0,300)))
+gp = gp + scale_y_discrete(expand=expand_scale(add=c(0,300)))
 
-gp = gp + geom_segment(x=1280, y=0.75, xend=1280, yend=1.75, color="black")
+gp = gp + geom_segment(y=1280, x=0.75, yend=1280, xend=1.75, color="black")
 cAR = round(filter(cors, Comparison == "A:R")$Correlation, 2)
-gp = gp + geom_text(x=1340, y=1.25, color="black", label=cAR, size=3)
+gp = gp + geom_text(y=1340, x=1.25, color="black", label=cAR, size=3)
 
-gp = gp + geom_segment(x=1280, y=2.25, xend=1280, yend=3.25, color="black")
+gp = gp + geom_segment(y=1280, x=2.25, yend=1280, xend=3.25, color="black")
 cAE = round(filter(cors, Comparison == "A:E")$Correlation, 2)
-gp = gp + geom_text(x=1340, y=2.75, color="black", label=cAE, size=3)
+gp = gp + geom_text(y=1340, x=2.75, color="black", label=cAE, size=3)
 
-gp = gp + geom_segment(x=1440, y=1, xend=1440, yend=3, color="black")
+gp = gp + geom_segment(y=1440, x=1, yend=1440, xend=3, color="black")
 cER = round(filter(cors, Comparison == "E:R")$Correlation, 2)
-gp = gp + geom_text(x=1500, y=2, color="black", label=cER, size=3)
+gp = gp + geom_text(y=1500, x=2, color="black", label=cER, size=3)
 
 gp = gp + theme_bw()
 gp = gp + scale_color_viridis_c(direction = 1)
@@ -300,5 +302,9 @@ gp = gp + theme(
   axis.ticks.x = element_blank(),
   panel.grid = element_blank()
 )
+
+gp = gp + ylab("Feature")
+
+gp = gp + coord_flip()
 
 ggsave("results/method_feature_rank_comparison.pdf", gp, h=5, w=18, units="cm")
