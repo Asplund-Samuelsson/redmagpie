@@ -78,7 +78,8 @@ feim = bind_rows(ecim, pfim) %>%
 anno = bind_rows(
     pfan %>% mutate(KEGG_EC = NA),
     ecan %>% select(-OldEC) %>% rename(KEGG_EC = EC)
-  )
+  ) %>%
+  distinct()
 
 # There are now three results tables (fwil, acco, feim) + annotations (anno)
 
@@ -190,9 +191,24 @@ feim = feim %>%
   select(Rank, everything())
 
 # Save tables with annotations
-write_tsv(left_join(fwil, anno), "results/Supplementary_Enrichment.tab")
-write_tsv(left_join(acco, anno), "results/Supplementary_ACE.tab")
-write_tsv(left_join(feim, anno), "results/Supplementary_Random_forest.tab")
+write_tsv(
+  fwil %>%
+    left_join(anno) %>%
+    select(Rank, Feature_Type, Feature, Name, everything()),
+  "results/Supplementary_Enrichment.tab"
+)
+write_tsv(
+  acco %>%
+    left_join(anno) %>%
+    select(Rank, Feature_Type, Feature, Name, everything()),
+  "results/Supplementary_ACE.tab"
+)
+write_tsv(
+  feim %>%
+    left_join(anno) %>%
+    select(Rank, Feature_Type, Feature, Name, everything()),
+  "results/Supplementary_Random_forest.tab"
+)
 
 # Correlate methods
 rnks =
