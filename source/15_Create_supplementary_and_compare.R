@@ -100,7 +100,8 @@ fwil = fwil %>%
     mean_Negative, mean_Positive,
     CV_Negative, CV_Positive,
     p, q
-  )
+  ) %>%
+  filter(is.finite(q))
 
 acco = acco %>%
   rename(
@@ -161,15 +162,21 @@ acca = acco %>%
   select(-r_pos)
 
 accr = acco %>%
-  # Calculate the max r2 value per feature
-  select(Feature_Type, Feature, Subtree, r) %>%
+  # Calculate an absolute r weighted by q values
+  select(Feature_Type, Feature, Subtree, r, q_Correlation, q_Wilcox) %>%
+  mutate(
+    X = abs(r) *
+      log(q_Correlation + median(q_Correlation))/log(median(q_Correlation)) *
+      log(q_Wilcox + median(q_Wilcox))/log(median(q_Correlation))
+  ) %>%
+  # Sum the weighted r per feature
   group_by(Feature_Type, Feature) %>%
-  summarise(max_r2 = max(r^2)) %>%
-  # Create rank based on maximum r2
-  mutate(Rank = rank(-max_r2)) %>%
+  summarise(X = sum(X)) %>%
+  # Create rank based on the weighted r sum
+  mutate(Rank = rank(-X)) %>%
   # Then create final rank regardless of feature type
   ungroup() %>%
-  arrange(Rank, -max_r2) %>%
+  arrange(Rank, -X) %>%
   mutate(Rank = 1:length(Rank)) %>%
   arrange(Rank)
 
