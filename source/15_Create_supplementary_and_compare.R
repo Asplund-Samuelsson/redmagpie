@@ -296,9 +296,9 @@ copp = rnks %>%
     )
   )
 
-gp = ggplot(copp, aes(y=as.numeric(Feature), color=Rank, x=Method))
+gp = ggplot(copp, aes(y=as.numeric(Feature), color=Rank, shape=Method, x=Method))
 gp = gp + geom_violin(fill=NA)
-gp = gp + geom_jitter(size=1, alpha=0.9)
+gp = gp + geom_jitter(size=1, alpha=0.8)
 
 # Add correlations
 gp = gp + scale_y_discrete(expand=expand_scale(add=c(0,300)))
@@ -316,7 +316,7 @@ cER = round(filter(cors, Comparison == "E:R")$Correlation, 2)
 gp = gp + geom_text(y=1500, x=2, color="black", label=cER, size=3)
 
 gp = gp + theme_bw()
-gp = gp + scale_color_viridis_c(direction = 1)
+gp = gp + scale_color_viridis_c(direction = 1, guide=F)
 gp = gp + theme(
   axis.title.y = element_blank(),
   axis.text.y = element_text(colour="black"),
@@ -325,9 +325,40 @@ gp = gp + theme(
   axis.ticks.x = element_blank(),
   panel.grid = element_blank()
 )
+gp = gp + scale_shape_discrete(guide=F)
 
 gp = gp + ylab("Feature")
 
 gp = gp + coord_flip()
 
-ggsave("results/method_feature_rank_comparison.pdf", gp, h=5, w=18, units="cm")
+ggsave("results/method_feature_rank_comparison_B.pdf", gp, h=5, w=18, units="cm")
+
+
+gp = ggplot(
+  copp,
+  aes(
+    x=as.numeric(Feature), y=Rank, shape=Method, color=Rank, group = Feature
+  )
+)
+gp = gp + geom_line(size=0.2, alpha=0.5)
+gp = gp + geom_point(size=0.8, alpha=0.8)
+gp = gp + theme_bw()
+gp = gp + scale_color_viridis_c(direction = 1, guide=F)
+
+gp = gp + theme(
+  axis.title.y = element_text(colour="black"),
+  axis.text.y = element_text(colour="black"),
+  axis.ticks.y = element_line(colour="black"),
+  axis.text.x = element_blank(),
+  axis.ticks.x = element_blank(),
+  panel.grid = element_blank(),
+  legend.position = c(0.9,0.3),
+  legend.title = element_blank(),
+  legend.background = element_blank()
+)
+
+gp = gp + xlab("Feature")
+
+ggsave(
+  "results/method_feature_rank_comparison_A.pdf", gp, h=5, w=18, units="cm"
+)
