@@ -304,7 +304,9 @@ gp = gp + scale_y_discrete(expand=expand_scale(add=c(0,80)))
 
 gp = gp + geom_segment(
   aes(y=1280, x=0.75, yend=1280, xend=1.75),
-  data.frame(Method="Enrichment"), color="black"
+  data.frame(
+    Method=factor("ACE", levels = c("Random forest", "ACE", "Enrichment"))
+  ), color="black"
 )
 cAR = round(filter(cors, Comparison == "A:R")$Correlation, 2)
 gp = gp + geom_text(
@@ -314,7 +316,9 @@ gp = gp + geom_text(
 
 gp = gp + geom_segment(
   aes(y=1280, x=2.25, yend=1280, xend=3.25),
-  data.frame(Method="Enrichment"), color="black"
+  data.frame(
+    Method=factor("ACE", levels = c("Random forest", "ACE", "Enrichment"))
+  ), color="black"
 )
 cAE = round(filter(cors, Comparison == "A:E")$Correlation, 2)
 gp = gp + geom_text(
@@ -324,7 +328,9 @@ gp = gp + geom_text(
 
 gp = gp + geom_segment(
   aes(y=1440, x=1, yend=1440, xend=3),
-  data.frame(Method="Enrichment"), color="black"
+  data.frame(
+    Method=factor("ACE", levels = c("Random forest", "ACE", "Enrichment"))
+  ), color="black"
 )
 cER = round(filter(cors, Comparison == "E:R")$Correlation, 2)
 gp = gp + geom_text(
@@ -381,7 +387,7 @@ cop2 = rnks %>%
   )
 
 gp = ggplot(
-  cop2 %>% group_by(Feature) %>% mutate(MeanRank = mean(Rank)),
+  cop2 %>% group_by(Feature) %>% mutate(MeanRank = mean(Rank)) %>% ungroup(),
   aes(
     x=as.numeric(Feature), y=Rank, shape=Method, color=Rank, group = Feature
   )
@@ -401,6 +407,10 @@ gp = gp + theme(
   legend.position = c(0.9,0.3),
   legend.title = element_blank(),
   legend.background = element_blank()
+)
+
+gp = gp + scale_shape_manual(
+  values=c(15, 16, 17), guide=guide_legend(reverse=T)
 )
 
 gp = gp + xlab("Feature")
