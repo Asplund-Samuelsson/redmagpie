@@ -267,7 +267,91 @@ normrank = function(x){
   return(abs(1 - nRank))
 }
 
-copp = rnks %>%
+cop1 = rnks %>%
+  gather(Method, Rank, -Feature) %>%
+  # Keep only features that are significant
+  inner_join(sigf) %>%
+  # Normalize rank after removing insignificant features
+  spread(Method, Rank) %>%
+  mutate(A = normrank(A), E = normrank(E), R = normrank(R)) %>%
+  # Remove features that occur in only one method
+  filter((is.na(A) + is.na(E) + is.na(R)) < 2) %>%
+  gather(Method, Rank, -Feature) %>%
+  filter(!is.na(Rank)) %>%
+  mutate(
+    Method = recode(
+      Method,
+      "E" = "Enrichment",
+      "A" = "ACE",
+      "R" = "Random forest"
+    ),
+    Method = factor(Method, levels = c("Random forest", "ACE", "Enrichment")),
+    Feature = factor(
+      Feature,
+      levels = ungroup(.) %>%
+        filter(Method == "A") %>%
+        arrange(Rank) %>%
+        pull(Feature)
+    )
+  )
+
+gp = ggplot(cop1, aes(y=as.numeric(Feature), color=Rank, shape=Method, x=Method))
+gp = gp + geom_violin(fill=NA)
+gp = gp + geom_jitter(size=1, alpha=0.8)
+
+# Add correlations
+gp = gp + scale_y_discrete(expand=expand_scale(add=c(0,80)))
+
+gp = gp + geom_segment(
+  aes(y=1280, x=0.75, yend=1280, xend=1.75),
+  data.frame(Method="Enrichment"), color="black"
+)
+cAR = round(filter(cors, Comparison == "A:R")$Correlation, 2)
+gp = gp + geom_text(
+  aes(y=1340, x=1.25, label=cAR, size=3),
+  data.frame(Method=NA), color="black"
+)
+
+gp = gp + geom_segment(
+  aes(y=1280, x=2.25, yend=1280, xend=3.25),
+  data.frame(Method="Enrichment"), color="black"
+)
+cAE = round(filter(cors, Comparison == "A:E")$Correlation, 2)
+gp = gp + geom_text(
+  aes(y=1340, x=2.75, label=cAE, size=3),
+  data.frame(Method=NA), color="black"
+)
+
+gp = gp + geom_segment(
+  aes(y=1440, x=1, yend=1440, xend=3),
+  data.frame(Method="Enrichment"), color="black"
+)
+cER = round(filter(cors, Comparison == "E:R")$Correlation, 2)
+gp = gp + geom_text(
+  aes(y=1500, x=2, label=cER, size=3),
+  data.frame(Method=NA), color="black"
+)
+
+gp = gp + theme_bw()
+gp = gp + scale_color_viridis_c(direction = 1, guide=F)
+gp = gp + theme(
+  axis.title.y = element_blank(),
+  axis.text.y = element_text(colour="black"),
+  axis.ticks.y = element_line(colour="black"),
+  axis.text.x = element_blank(),
+  axis.ticks.x = element_blank(),
+  panel.grid = element_blank()
+)
+gp = gp + scale_shape_discrete(guide=F)
+gp = gp + scale_size_continuous(guide=F)
+
+gp = gp + ylab("Feature")
+
+gp = gp + coord_flip()
+
+ggsave("results/method_feature_rank_comparison_B.pdf", gp, h=5, w=18, units="cm")
+
+cop2 = rnks %>%
   gather(Method, Rank, -Feature) %>%
   # Keep only features that are significant
   inner_join(sigf) %>%
@@ -296,51 +380,13 @@ copp = rnks %>%
     )
   )
 
-gp = ggplot(copp, aes(y=as.numeric(Feature), color=Rank, shape=Method, x=Method))
-gp = gp + geom_violin(fill=NA)
-gp = gp + geom_jitter(size=1, alpha=0.8)
-
-# Add correlations
-gp = gp + scale_y_discrete(expand=expand_scale(add=c(0,300)))
-
-gp = gp + geom_segment(y=1280, x=0.75, yend=1280, xend=1.75, color="black")
-cAR = round(filter(cors, Comparison == "A:R")$Correlation, 2)
-gp = gp + geom_text(y=1340, x=1.25, color="black", label=cAR, size=3)
-
-gp = gp + geom_segment(y=1280, x=2.25, yend=1280, xend=3.25, color="black")
-cAE = round(filter(cors, Comparison == "A:E")$Correlation, 2)
-gp = gp + geom_text(y=1340, x=2.75, color="black", label=cAE, size=3)
-
-gp = gp + geom_segment(y=1440, x=1, yend=1440, xend=3, color="black")
-cER = round(filter(cors, Comparison == "E:R")$Correlation, 2)
-gp = gp + geom_text(y=1500, x=2, color="black", label=cER, size=3)
-
-gp = gp + theme_bw()
-gp = gp + scale_color_viridis_c(direction = 1, guide=F)
-gp = gp + theme(
-  axis.title.y = element_blank(),
-  axis.text.y = element_text(colour="black"),
-  axis.ticks.y = element_line(colour="black"),
-  axis.text.x = element_blank(),
-  axis.ticks.x = element_blank(),
-  panel.grid = element_blank()
-)
-gp = gp + scale_shape_discrete(guide=F)
-
-gp = gp + ylab("Feature")
-
-gp = gp + coord_flip()
-
-ggsave("results/method_feature_rank_comparison_B.pdf", gp, h=5, w=18, units="cm")
-
-
 gp = ggplot(
-  copp,
+  cop2 %>% group_by(Feature) %>% mutate(MeanRank = mean(Rank)),
   aes(
     x=as.numeric(Feature), y=Rank, shape=Method, color=Rank, group = Feature
   )
 )
-gp = gp + geom_line(size=0.2, alpha=0.5)
+gp = gp + geom_line(mapping=aes(color=MeanRank), size=0.2, alpha=0.5)
 gp = gp + geom_point(size=0.8, alpha=0.8)
 gp = gp + theme_bw()
 gp = gp + scale_color_viridis_c(direction = 1, guide=F)
