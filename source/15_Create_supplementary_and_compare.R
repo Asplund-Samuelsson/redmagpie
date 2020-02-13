@@ -397,6 +397,35 @@ gp = ggplot(
     x=as.numeric(Feature), y=Rank, shape=Method, color=Rank, group = Feature
   )
 )
+
+# Randomly resample the ranks and plot that in the background
+for (i in 1:100) {
+  copr = cop2 %>%
+    select(-SD) %>%
+    group_by(Method) %>%
+    mutate(Rank = sample(Rank)) %>%
+    # Order features by mean Rank and make numeric to match pattern of real data
+    ungroup() %>%
+    mutate(
+      Feature = factor(
+        Feature,
+        levels = ungroup(.) %>%
+          group_by(Feature) %>%
+          summarise(Rank = mean(Rank)) %>%
+          arrange(Rank) %>%
+          pull(Feature)
+      )
+    ) %>%
+    # Calculate the SD quartile after creating new features
+    group_by(Feature) %>%
+    mutate(SD = sd(Rank)) %>%
+    ungroup() %>%
+    mutate(SD = ntile(SD, 4))
+
+#  gp = gp + geom_line(data = copr, colour = "lightgrey", size=0.2, alpha=0.02)
+  gp = gp + geom_point(data = copr, colour = "lightgrey", size=0.8, alpha=0.05)
+}
+# Plot real data
 gp = gp + geom_line(mapping=aes(color=MeanRank), size=0.2, alpha=0.5)
 gp = gp + geom_point(size=0.8, alpha=0.8)
 gp = gp + theme_bw()
