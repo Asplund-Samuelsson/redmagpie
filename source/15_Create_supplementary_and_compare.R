@@ -384,7 +384,12 @@ cop2 = rnks %>%
         arrange(Rank) %>%
         pull(Feature)
     )
-  )
+  ) %>%
+  # Add standard deviation quartiles
+  group_by(Feature) %>%
+  mutate(SD = sd(Rank)) %>%
+  ungroup() %>%
+  mutate(SD = ntile(SD, 4))
 
 gp = ggplot(
   cop2 %>% group_by(Feature) %>% mutate(MeanRank = mean(Rank)) %>% ungroup(),
@@ -404,9 +409,13 @@ gp = gp + theme(
   axis.text.x = element_blank(),
   axis.ticks.x = element_blank(),
   panel.grid = element_blank(),
-  legend.position = c(0.9,0.3),
+  legend.position = c(0.14,0.20),
   legend.title = element_blank(),
-  legend.background = element_blank()
+  legend.background = element_blank(),
+  strip.background = element_blank(),
+  strip.text = element_blank(),
+  legend.key = element_blank(),
+  legend.key.height = unit(0.4, "cm")
 )
 
 gp = gp + scale_shape_manual(
@@ -414,6 +423,8 @@ gp = gp + scale_shape_manual(
 )
 
 gp = gp + xlab("Feature")
+
+gp = gp + facet_wrap(~SD, ncol=4)
 
 ggsave(
   "results/method_feature_rank_comparison_A.pdf", gp, h=5, w=18, units="cm"
