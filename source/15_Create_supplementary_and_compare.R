@@ -389,18 +389,11 @@ cop2 = rnks %>%
   group_by(Feature) %>%
   mutate(SD = sd(Rank)) %>%
   ungroup() %>%
-  mutate(SD = ntile(SD, 4))
-
-gp = ggplot(
-  cop2 %>% group_by(Feature) %>% mutate(MeanRank = mean(Rank)) %>% ungroup(),
-  aes(
-    x=as.numeric(Feature), y=Rank, shape=Method, color=Rank, group = Feature
-  )
-)
+  mutate(SD = recode(ntile(SD, 4), `1`="Q1", `2`="Q2", `3`="Q3", `4`="Q4"))
 
 # Randomly resample the ranks and plot that in the background
-for (i in 1:100) {
-  copr = cop2 %>%
+copr = bind_rows(lapply(1:1000, function(i){
+  cop2 %>%
     select(-SD) %>%
     group_by(Method) %>%
     mutate(Rank = sample(Rank)) %>%
@@ -420,14 +413,27 @@ for (i in 1:100) {
     group_by(Feature) %>%
     mutate(SD = sd(Rank)) %>%
     ungroup() %>%
-    mutate(SD = ntile(SD, 4))
+    mutate(SD = recode(ntile(SD, 4), `1`="Q1", `2`="Q2", `3`="Q3", `4`="Q4")) %>%
+    mutate(Feature = as.numeric(Feature))
+}))
 
-#  gp = gp + geom_line(data = copr, colour = "lightgrey", size=0.2, alpha=0.02)
-  gp = gp + geom_point(data = copr, colour = "lightgrey", size=0.8, alpha=0.05)
-}
+gp = ggplot(
+  cop2 %>% group_by(Feature) %>% mutate(MeanRank = mean(Rank)) %>% ungroup(),
+  aes(
+    x=as.numeric(Feature), y=Rank, shape=Method, color=Rank, group = Feature
+  )
+)
+
+#gp = gp + geom_point(data = copr, colour = "lightgrey", size=0.8, alpha=0.05)
+gp = gp + geom_bin2d(data = copr, bins=100, color=NA)
+gp = gp + scale_fill_gradient(
+  low="#eeeeee", high="#b0b0b0", trans="log10",
+  guide=guide_legend(key.height = unit(2, "cm"))
+)
+
 # Plot real data
-gp = gp + geom_line(mapping=aes(color=MeanRank), size=0.2, alpha=0.5)
-gp = gp + geom_point(size=0.8, alpha=0.8)
+gp = gp + geom_line(mapping=aes(color=MeanRank), size=0.1, alpha=0.5)
+gp = gp + geom_point(size=0.2, alpha=0.8)
 gp = gp + theme_bw()
 gp = gp + scale_color_viridis_c(direction = 1, guide=F)
 
@@ -441,10 +447,15 @@ gp = gp + theme(
   legend.position = c(0.14,0.20),
   legend.title = element_blank(),
   legend.background = element_blank(),
+  legend.text = element_text(size=6),
   strip.background = element_blank(),
-  strip.text = element_blank(),
+#  strip.text = element_blank(),
   legend.key = element_blank(),
-  legend.key.height = unit(0.4, "cm")
+  legend.key.height = unit(0.4, "cm"),
+  legend.key.width = unit(0.4, "cm"),
+  legend.box = "horizontal",
+  legend.margin = margin(t=0, r=0, b=0, l=0, unit="cm"),
+  aspect.ratio = 1
 )
 
 gp = gp + scale_shape_manual(
@@ -456,5 +467,5 @@ gp = gp + xlab("Feature")
 gp = gp + facet_wrap(~SD, ncol=4)
 
 ggsave(
-  "results/method_feature_rank_comparison_A.pdf", gp, h=5, w=18, units="cm"
+  "results/method_feature_rank_comparison_A.pdf", gp, h=5.5, w=18, units="cm"
 )
