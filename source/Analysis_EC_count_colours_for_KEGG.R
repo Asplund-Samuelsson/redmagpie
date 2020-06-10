@@ -109,3 +109,39 @@ write_delim(
   "results/EC_count_features.KEGG_difference_colours.txt",
   delim=" ", col_names=F
 )
+
+# Add discrete colour to importances
+dico = ecct %>%
+  # Remove if there is no KO assignment
+  filter(!is.na(KO)) %>%
+  # Select relevant data
+  select(Difference, KO) %>%
+  # Calculate mean for KOs with multiple ECs
+  group_by(KO) %>%
+  summarise(Difference = mean(Difference)) %>%
+  ungroup() %>%
+  # Normalize Difference to range 0 to 1 with 0.5 corresponding to 0
+  mutate(
+    xDifference =
+    (Difference + max(abs(Difference)))/(max(Difference) + max(abs(Difference)))
+  ) %>%
+  # Add colours
+  mutate(
+    Colour = case_when(
+      xDifference > 0.54 ~ "#f1a340",
+      xDifference < 0.46 ~ "#998ec3",
+      TRUE ~ "#f7f7f7"
+    ),
+    TextColour = ifelse(
+      Colour != "#998ec3",
+      "#000000", "#ffffff"
+    ),
+    KEGGColour = paste(Colour, TextColour, sep=",")
+  )
+
+# Write colours in format expected by KEGG
+write_delim(
+  select(dico, KO, KEGGColour),
+  "results/EC_count_features.KEGG_difference_colours.discrete.txt",
+  delim=" ", col_names=F
+)
