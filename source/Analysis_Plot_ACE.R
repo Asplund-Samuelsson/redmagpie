@@ -184,7 +184,7 @@ aant = tibble(
   Calvin = aACE$lik.anc %>%
     as_tibble() %>%
     pull(Positive),
-  Feature = arftACE
+  Feature = as.double(arftACE)
 )  %>%
   mutate(node = 1:nrow(.) + length(artr$tip.label)) %>%
   bind_rows(
@@ -200,7 +200,7 @@ if(Tree > 0){
     Calvin = cACE$lik.anc %>%
       as_tibble() %>%
       pull(Positive),
-    Feature = baftACE
+    Feature = as.double(baftACE)
   ) %>%
     mutate(node = 1:nrow(.) + length(sbtr$tip.label)) %>%
     bind_rows(
