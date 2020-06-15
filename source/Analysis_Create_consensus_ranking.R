@@ -3,39 +3,43 @@ library(tidyverse)
 
 # Load data
 supp = bind_rows(
+
   # Load enrichment
   read_tsv("results/Supplementary_Enrichment.tab") %>%
     select(Rank, Feature_Type, Feature, mean_Negative, mean_Positive) %>%
     distinct() %>%
     mutate(Method = "E") %>%
     gather(Data, Value, -Method, -Feature_Type, -Feature),
+
   # Load ACE
   read_tsv("results/Supplementary_ACE.tab") %>%
-  select(Feature_Type, Feature, Subtree, r, q_Correlation, q_Wilcox) %>%
-  distinct() %>%
-  # Calculate weighted absolute correlation
-  mutate(
-    X = abs(r) *
-    log(q_Correlation + median(q_Correlation))/log(median(q_Correlation)) *
-    log(q_Wilcox + median(q_Wilcox))/log(median(q_Correlation))
-  ) %>%
-  # Calculate mean weighted r per feature
-  group_by(Feature_Type, Feature) %>%
-  summarise(weighted_r = mean(X)) %>%
-  # Add back rank
-  inner_join(
-    read_tsv("results/Supplementary_ACE.tab") %>%
-    select(Rank, Feature) %>%
-    distinct()
-  ) %>%
-  mutate(Method = "A") %>%
-  gather(Data, Value, -Method, -Feature_Type, -Feature),
+    select(Feature_Type, Feature, Subtree, r, q_Correlation, q_Wilcox) %>%
+    distinct() %>%
+    # Calculate weighted absolute correlation
+    mutate(
+      X = abs(r) *
+      log(q_Correlation + median(q_Correlation))/log(median(q_Correlation)) *
+      log(q_Wilcox + median(q_Wilcox))/log(median(q_Correlation))
+    ) %>%
+    # Calculate mean weighted r per feature
+    group_by(Feature_Type, Feature) %>%
+    summarise(weighted_r = mean(X)) %>%
+    # Add back rank
+    inner_join(
+      read_tsv("results/Supplementary_ACE.tab") %>%
+      select(Rank, Feature) %>%
+      distinct()
+    ) %>%
+    mutate(Method = "A") %>%
+    gather(Data, Value, -Method, -Feature_Type, -Feature),
+
   # Load random forest
   read_tsv("results/Supplementary_Random_forest.tab") %>%
     select(Rank, Feature_Type, Feature, Importance) %>%
     distinct() %>%
     mutate(Method = "R") %>%
     gather(Data, Value, -Method, -Feature_Type, -Feature)
+
 )
 
 # Spread data into columns and calculate consensus rank
