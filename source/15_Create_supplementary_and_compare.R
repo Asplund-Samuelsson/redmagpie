@@ -136,30 +136,10 @@ feim = feim %>%
 
 # Add Rank unified for ECs and Pfams
 fwil = fwil %>%
-  # First rank within feature type
-  group_by(Feature_Type) %>%
-  mutate(Rank = rank(q)) %>%
-  # Then rank based on rank and the sorting value
-  ungroup() %>%
-  arrange(Rank, q) %>%
-  mutate(Rank = 1:length(Rank)) %>%
-  arrange(Rank) %>%
+  arrange(q) %>%
+  mutate(Rank = rank(q, ties.method="min")) %>%
   # Sort columns as wanted
   select(Rank, everything())
-
-acca = acco %>%
-  # Check number of subtrees in agreement...
-  filter(Significant == 1) %>%
-  group_by(Feature) %>%
-  summarise(
-    r_pos = sum(r >= 0),
-    n = length(Subtree),
-    r = mean(r),
-    r2 = mean(r^2)
-  ) %>%
-  filter(r_pos == 0 | r_pos == n, n > 1) %>%
-  arrange(-n, -r2) %>%
-  select(-r_pos)
 
 accr = acco %>%
   # Calculate an absolute r weighted by q values
@@ -170,30 +150,23 @@ accr = acco %>%
       log(q_Wilcox + median(q_Wilcox))/log(median(q_Correlation))
   ) %>%
   # Sum the weighted r per feature
-  group_by(Feature_Type, Feature) %>%
+  group_by(Feature) %>%
   summarise(X = sum(X)) %>%
   # Create rank based on the weighted r sum
-  mutate(Rank = rank(-X)) %>%
-  # Then create final rank regardless of feature type
-  ungroup() %>%
-  arrange(Rank, -X) %>%
-  mutate(Rank = 1:length(Rank)) %>%
+  mutate(Rank = rank(-X, ties.method="min")) %>%
   arrange(Rank)
 
 acco = acco %>%
-  inner_join(select(accr, Feature, Rank)) %>%
+  inner_join(select(accr, Feature, Rank, X)) %>%
   select(Rank, everything()) %>%
-  arrange(Rank, -Significant, -r^2)
+  arrange(Rank, -Significant, -r^2, -X) %>%
+  select(-X)
 
 feim = feim %>%
-  # First rank within feature type
+  # Rank within feature type
   group_by(Feature_Type) %>%
-  mutate(Rank = rank(-Importance)) %>%
-  # Then rank based on rank and the sorting value
-  ungroup() %>%
-  arrange(Rank, -Importance) %>%
-  mutate(Rank = 1:length(Rank)) %>%
-  arrange(Rank) %>%
+  mutate(Rank = rank(-Importance, ties.method="min")) %>%
+  arrange(Rank, Feature_Type) %>%
   # Sort columns as wanted
   select(Rank, everything())
 
@@ -220,9 +193,9 @@ write_tsv(
 # Correlate methods
 rnks =
   bind_rows(
-    select(fwil, Feature, Rank) %>% mutate(Method="E"),
-    select(accr, Feature, Rank) %>% mutate(Method="A"),
-    select(feim, Feature, Rank) %>% mutate(Method="R")
+    select(ungroup(fwil), Feature, Rank) %>% mutate(Method="E"),
+    select(ungroup(accr), Feature, Rank) %>% mutate(Method="A"),
+    select(ungroup(feim), Feature, Rank) %>% mutate(Method="R")
   ) %>%
   spread(Method, Rank)
 
@@ -356,116 +329,3 @@ gp = gp + ylab("Feature")
 gp = gp + coord_flip()
 
 ggsave("results/method_feature_rank_comparison_B.pdf", gp, h=5, w=18, units="cm")
-
-cop2 = rnks %>%
-  gather(Method, Rank, -Feature) %>%
-  # Keep only features that are significant
-  inner_join(sigf) %>%
-  # Normalize rank after removing insignificant features
-  spread(Method, Rank) %>%
-  mutate(A = normrank(A), E = normrank(E), R = normrank(R)) %>%
-  # Remove features that occur in only one method
-  filter((is.na(A) + is.na(E) + is.na(R)) < 2) %>%
-  gather(Method, Rank, -Feature) %>%
-  filter(!is.na(Rank)) %>%
-  mutate(
-    Method = recode(
-      Method,
-      "E" = "Enrichment",
-      "A" = "ACE",
-      "R" = "Random forest"
-    ),
-    Method = factor(Method, levels = c("Random forest", "ACE", "Enrichment")),
-    Feature = factor(
-      Feature,
-      levels = ungroup(.) %>%
-        group_by(Feature) %>%
-        summarise(Rank = mean(Rank)) %>%
-        arrange(Rank) %>%
-        pull(Feature)
-    )
-  ) %>%
-  # Add standard deviation quartiles
-  group_by(Feature) %>%
-  mutate(SD = sd(Rank)) %>%
-  ungroup() %>%
-  mutate(SD = recode(ntile(SD, 4), `1`="Q1", `2`="Q2", `3`="Q3", `4`="Q4"))
-
-# Randomly resample the ranks and plot that in the background
-copr = bind_rows(lapply(1:1000, function(i){
-  cop2 %>%
-    select(-SD) %>%
-    group_by(Method) %>%
-    mutate(Rank = sample(Rank)) %>%
-    # Order features by mean Rank and make numeric to match pattern of real data
-    ungroup() %>%
-    mutate(
-      Feature = factor(
-        Feature,
-        levels = ungroup(.) %>%
-          group_by(Feature) %>%
-          summarise(Rank = mean(Rank)) %>%
-          arrange(Rank) %>%
-          pull(Feature)
-      )
-    ) %>%
-    # Calculate the SD quartile after creating new features
-    group_by(Feature) %>%
-    mutate(SD = sd(Rank)) %>%
-    ungroup() %>%
-    mutate(SD = recode(ntile(SD, 4), `1`="Q1", `2`="Q2", `3`="Q3", `4`="Q4")) %>%
-    mutate(Feature = as.numeric(Feature))
-}))
-
-gp = ggplot(
-  cop2 %>% group_by(Feature) %>% mutate(MeanRank = mean(Rank)) %>% ungroup(),
-  aes(
-    x=as.numeric(Feature), y=Rank, shape=Method, color=Rank, group = Feature
-  )
-)
-
-#gp = gp + geom_point(data = copr, colour = "lightgrey", size=0.8, alpha=0.05)
-gp = gp + geom_bin2d(data = copr, bins=100, color=NA)
-gp = gp + scale_fill_gradient(
-  low="#eeeeee", high="#b0b0b0", trans="log10",
-  guide=guide_legend(key.height = unit(2, "cm"))
-)
-
-# Plot real data
-gp = gp + geom_line(mapping=aes(color=MeanRank), size=0.1, alpha=0.5)
-gp = gp + geom_point(size=0.2, alpha=0.8)
-gp = gp + theme_bw()
-gp = gp + scale_color_viridis_c(direction = 1, guide=F)
-
-gp = gp + theme(
-  axis.title.y = element_text(colour="black"),
-  axis.text.y = element_text(colour="black"),
-  axis.ticks.y = element_line(colour="black"),
-  axis.text.x = element_blank(),
-  axis.ticks.x = element_blank(),
-  panel.grid = element_blank(),
-  legend.position = c(0.14,0.20),
-  legend.title = element_blank(),
-  legend.background = element_blank(),
-  legend.text = element_text(size=6),
-  strip.background = element_blank(),
-#  strip.text = element_blank(),
-  legend.key = element_blank(),
-  legend.key.height = unit(0.4, "cm"),
-  legend.key.width = unit(0.4, "cm"),
-  legend.box = "horizontal",
-  legend.margin = margin(t=0, r=0, b=0, l=0, unit="cm"),
-  aspect.ratio = 1
-)
-
-gp = gp + scale_shape_manual(
-  values=c(15, 16, 17), guide=guide_legend(reverse=T)
-)
-
-gp = gp + xlab("Feature")
-
-gp = gp + facet_wrap(~SD, ncol=4)
-
-ggsave(
-  "results/method_feature_rank_comparison_A.pdf", gp, h=5.5, w=18, units="cm"
-)

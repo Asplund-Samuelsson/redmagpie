@@ -54,7 +54,7 @@ supp = supp %>%
     R = ifelse(is.na(R), max(R, na.rm=T)+1, R)
   ) %>%
   # Calculate consensus rank
-  mutate(Rank = rank(A+E+R)) %>%
+  mutate(Rank = rank(A+E+R, ties.method="min")) %>%
   arrange(Rank) %>%
   select(-E, -A, -R)
 
