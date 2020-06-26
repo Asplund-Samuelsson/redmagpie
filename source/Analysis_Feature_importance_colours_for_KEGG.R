@@ -4,19 +4,17 @@ library(tidyverse)
 # Define infiles
 feim_file = "intermediate/EC_count_features.importance.tab.gz"
 tran_file = "data/kegg_enzyme.old_new.tab"
-koec_file = "data/ko_ec.tab"
 
 # Load data
 feim = read_tsv(feim_file)
 tran = read_tsv(tran_file, col_names = c("EC", "NewEC"))
-koec = read_tsv(koec_file, col_names=c("KO", "EC"))
 
 # Clean up EC annotations
 feim = feim %>%
   rename(EC = Feature) %>%
   # Clean up EC
   mutate(EC = str_replace(EC, "EC", "")) %>%
-  # Calculate feature Importance mean
+  # Calculate feature Importance mean across forests
   group_by(EC) %>%
   summarise(Importance = mean(Importance), log10imp = log10(Importance))
 
@@ -31,10 +29,6 @@ feim = feim %>%
   # Order by importance
   arrange(-Importance)
 
-feim = feim %>%
-  # Add KO if available
-  left_join(koec)
-
 # Calculate importance colours and write file for KEGG mapping
 library(viridis)
 library(grDevices)
@@ -46,14 +40,10 @@ is_bright = function(x) {(x[1]*299 + x[2]*587 + x[3]*114) / 1000 > 123}
 
 # Add colour to importances
 imco = feim %>%
-  # Remove if there is no KO assignment or no importance
-  filter(!is.na(KO), is.finite(log10imp)) %>%
+  # Remove if there is no importance
+  filter(is.finite(log10imp)) %>%
   # Select relevant data
-  select(log10imp, KO) %>%
-  # Calculate mean for ECs with multiple KOs
-  group_by(KO) %>%
-  summarise(log10imp = mean(log10imp)) %>%
-  ungroup() %>%
+  select(log10imp, EC) %>%
   # Normalize log10imp to range 0 to 1
   mutate(
     Importance = (log10imp - min(log10imp)) / (max(log10imp) - min(log10imp))
@@ -76,7 +66,7 @@ imco = feim %>%
 
 # Write colours in format expected by KEGG
 write_delim(
-  select(imco, KO, KEGGColour),
+  select(imco, EC, KEGGColour),
   "results/EC_count_features.KEGG_importance_colours.txt",
   delim=" ", col_names=F
 )
