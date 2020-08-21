@@ -146,8 +146,7 @@ feature_list_f = list(np.array(feature_list)[f])
 if lgr_cut:
     # Select most promising features using logistic regression
     rfe = RFE(
-        estimator=LogisticRegression(),
-#        n_features_to_select=int(np.ceil(0.25*X_f.shape[1])),
+        estimator=LogisticRegression(solver="liblinear"),
         n_features_to_select = 600,
         step=10, verbose=0
     )
