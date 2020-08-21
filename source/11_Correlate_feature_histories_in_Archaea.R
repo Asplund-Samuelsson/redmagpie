@@ -7,16 +7,12 @@ library(ggtree)
 # Define infiles
 artr_file = "intermediate/archaea.tree"
 exgn_file = "intermediate/example_genomes.tab"
-ecim_file = "intermediate/EC_count_features.importance.tab.gz"
-pfim_file = "intermediate/pfam_features.importance.tab.gz"
 taxo_file = "intermediate/accession_taxonomy.tab"
 orgs_file = "intermediate/accession_organism_colours.tab"
 
 # Load data
 artr = read.tree(artr_file)
 exgn = read_tsv(exgn_file)
-ecim = read_tsv(ecim_file)
-pfim = read_tsv(pfim_file)
 posg = exgn$Genome
 taxo = read_tsv(taxo_file)
 orgs = read_tsv(orgs_file)
@@ -176,7 +172,7 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
   names(arft) = artr$tip.label
 
   # Perform ACE on FBP using Brownian Motion model (default)
-  arftACE = fastAnc(artr, arft)
+  arftACE = as.double(fastAnc(artr, arft))
 
   # Prepare extra variables
   aant = tibble(

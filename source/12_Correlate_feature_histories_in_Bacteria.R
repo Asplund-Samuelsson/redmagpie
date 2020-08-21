@@ -9,8 +9,6 @@ artr_file = "intermediate/archaea.tree"
 batr_file = "intermediate/bacteria_midpoint_rooted_tree.Rdata"
 # batr_file = "intermediate/bacteria.tree"
 exgn_file = "intermediate/example_genomes.tab"
-ecim_file = "intermediate/EC_count_features.importance.tab.gz"
-pfim_file = "intermediate/pfam_features.importance.tab.gz"
 orgs_file = "intermediate/accession_organism_colours.tab"
 
 # Load data
@@ -477,7 +475,7 @@ garbage = foreach(i=1:nrow(topf)) %dopar% {
   names(baft) = sbtr$tip.label
 
   # Perform ACE on Feature using Brownian Motion model (default)
-  baftACE = fastAnc(sbtr, baft)
+  baftACE = as.double(fastAnc(sbtr, baft))
 
   # Prepare extra variables
   bant = tibble(
