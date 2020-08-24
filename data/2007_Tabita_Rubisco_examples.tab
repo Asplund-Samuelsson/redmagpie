@@ -1,0 +1,185 @@
+Form	Organism	Accession
+IA	Acidithiobacillus ferrooxidans	AAD30508
+IA	Alkalilimnicola ehrlichei MLHE-1	YP_743666
+IA	Allochromatium vinosum	P22859
+IA	Allochromatium vinosum	P22849
+IA	Bradyrhizobium sp. BTAi1	ZP_00862357
+IA	Cupriavidus (Rasltonia) metallidurans	ZP_00599453
+IA	Halorhodospira halophila SL1	YP_001002624
+IA	Hydrogenophilus thermoluteolus	Q51856
+IA	Hydrogenovibrio marinus	Q59460
+IA	Methylococcus capsulatus str. Bath	AAU91176
+IA	Nitrobacter hamburgensis X14	ZP_00628048
+IA	Nitrobacter vulgaris	Q59613
+IA	Nitrobacter winogradskyi Nb-255	ABA05246
+IA	Nitrosomonas europaea ATCC 19718	CAD85832
+IA	Nitrosomonas eutropha C91	YP_747036
+IA	Prochlorococcus marinus str. CCMP1375	AAP99596
+IA	Prochlorococcus marinus str. MIT9312	ABB49611
+IA	Prochlorococcus marinus str. MIT9313	NP_895035
+IA	Rhodobacter capsulatus	O32740
+IA	Rhodopseudomonas palustris BisB5	YP_568687
+IA	Solemya velum gill symbiont	AAT01429
+IA	Synechococcus sp. CC9605	ABB34521
+IA	Synechococcus sp. CC9902	ABB26572
+IA	Synechococcus sp. WH 7803	P96486
+IA	Synechococcus sp. WH 8102	CAE08233
+IA	Thiobacillus denitrificans ATCC 25259	YP_316382
+IA	Thiomicrospira crunogena XCL-2	ABB41023
+IA	Thiomicrospira crunogena XCL-2	ABB41434
+IA	Global Ocean Sampling expedition	EDH70269
+IA	Global Ocean Sampling expedition	EDJ35923
+IA	Global Ocean Sampling expedition	ECW27924
+IA	Global Ocean Sampling expedition	EDJ53092
+IA	uncultured bacterium 441	AAR37722
+IB	Anabaena variabilis ATCC 29413	ABA23512
+IB	Chlamydomonas reinhardtii	P00877
+IB	Chlorella ellipsoidea	BAA01765
+IB	Crocosphaera watsonii WH 8501	ZP_00516814
+IB	Euglena gracilis	NP_041936
+IB	Gloeobacter violaceus PCC 7421	BAC90097
+IB	Nicotiana tabacum	P00876
+IB	Nostoc punctiforme PCC 73102	ZP_00108159
+IB	Nostoc sp. PCC 7120	BAB77890
+IB	Prochlorothrix hollandica	P27568
+IB	Sargasso Sea	EAH88772
+IB	Spinacia oleracea	P00875
+IB	Synechococcus elongatus PCC 6301	P00880
+IB	Synechocystis sp. PCC 6803	CAA46773
+IB	Thermosynechococcus BP-1	BAC09058
+IB	Trichodesmium erythraeum IMS101	ZP_00674058
+IC/D	Paracoccus denitrificans PD1222	ZP_00629446
+IC/D	Rhodobacter sphaeroides 2.4.1	AAA26115
+IC/D	Rubrivivax gelatinosus	ZP_00243663
+IC/D	Rubrivivax gelatinosus PM1	ZP_00243775
+IC/D	Sinorhizobium meliloti	CAC48591
+IC/D	Xanthobacter autotrophicus Py2	ZP_01200598
+IC/D	Xanthobacter flavus	P23011
+IC/D	Acidiphilium cryptum JF-5	ZP_01146719
+IC/D	Aurantimonas sp. SI85-9A1	AAB41464
+IC/D	Bradyrhizobium japonicum USDA110	BAC47850
+IC/D	Bradyrhizobium sp. BTAi1	ZP_00859065
+IC/D	Bradyrhizobium sp. BTAi1	ZP_00859216
+IC/D	Burkholderia xenovorans (fungorum) LB400	ZP_00283421
+IC/D	Chrysochromulina hirta	P48692
+IC/D	Cylindrotheca sp. strain N1	AAA84192
+IC/D	Ectocarpus siliculosus	P24313
+IC/D	Emiliania huxleyi	YP_277313
+IC/D	Nitrobacter hamburgensis X14 	ZP_00626373
+IC/D	Nitrobacter winogradskyi Nb-255	ABA06179
+IC/D	Nitrosococcus oceani ATCC 19707	ABA56859
+IC/D	Nitrosospira multiformis ATCC 251966	YP_411385
+IC/D	Odontella sinensis	NP_043654
+IC/D	Olisthodiscus luteus	P14959
+IC/D	Pleurochrysis carterae	Q08051
+IC/D	Porphyridium aerugineum	Q09119
+IC/D	Rhodopseudomonas palustris BisA53	YP_780293
+IC/D	Rhodopseudomonas palustris BisB18	YP_531208
+IC/D	Rhodopseudomonas palustris BisB5	YP_570844
+IC/D	Rhodopseudomonas palustris CGA009	CAE27000
+IC/D	Rhodopseudomonas palustris HaA2	YP_487568
+IC/D	Global Ocean Sampling expedition	EDB85359
+IC/D	Global Ocean Sampling expedition	EBN02296
+IC/D	Global Ocean Sampling expedition	EDC15610
+IC/D	Global Ocean Sampling expedition	EDD64574
+II	Dechloromonas aromatica RCB	AAZ48366
+II	Hydrogenovibrio marinus	Q59462
+II	Lingulodinium polyedrum	AAA98748
+II	Magnetospirillum magnetotacticum	AAL76920
+II	Magnetospirillum magnetotacticum AMB-1	YP_422059
+II	Polaromonas napthalenivorans CJ2	YP_982208
+II	Prorocentrum minimum	AF463409
+II	Rhodobacter capsulatus	P50922
+II	Rhodobacter sphaeroides 2.4.1	ABA80879
+II	Rhodoferax ferrireducens T118	YP_522655
+II	Rhodopseudomonas palustris BisA53	YP_781603
+II	Rhodopseudomonas palustris BisB18	YP_532762
+II	Rhodopseudomonas palustris BisB5	YP_568193
+II	Rhodopseudomonas palustris CGA009	CAE30081
+II	Rhodopseudomonas palustris HaA2	YP_484572
+II	Rhodospirillum rubrum	CAA25080
+II	Symbiodinium sp.	AAG37859
+II	Thiobacillus denitrificans ATCC 25259	YP_316396
+II	Thiomicrospira crunogena XCL-2	ABB41020
+II	Global Ocean Sampling expedition	ECW52658
+II	Methanococcoides burtonii DSM 6242	ZP_00563653
+II	Methanosaeta thermophila PT	ZP_01153096
+II	Methanospirillum hungatei JF-1	YP_503739
+III-1	Methanocaldococcus jannaschii	AAB99239
+III-1	Methanosarcina acetivorans C2A	AAM07894
+III-1	Methanosarcina barkeri str. fusaro	AAZ69876
+III-1	Methanosarcina mazei Go1	AAM30945
+III-2	Archaeoglobus fulgidus DSM 4304	NP_070466
+III-2	Hyperthermus butylicus DSM 5456	YP_001012710
+III-2	Methanoculleus marisnigri JR1	ZP_01391373
+III-2	Natronomonas pharaonis DSM 2160	CAI49476
+III-2	Pyrococcus abyssi GE5	CAB50122
+III-2	Pyrococcus furiosus DSM 3638	AAL81280
+III-2	Pyrococcus horikoshii OT3	BAA30036
+III-2	Thermococcus kodakaraensis KOD1	BAD86479
+III-2	Thermofilum pendens Hrk 5	YP_920628
+IV-Non-photo	Acidiphilium cryptum JF-5	ZP_01146529
+IV-Non-photo	Bordetella bronchiseptica RB50	CAE31534
+IV-Non-photo	Burkholderia xenovorans (fungorum) LB400	ZP_00284840
+IV-Non-photo	Chromohalobacter salexigens DSM 3043	ZP_00471249
+IV-Non-photo	Delftia acidovorans SPH1	ZP_01577127
+IV-Non-photo	Fulvimarina pelagi HTCC2506	ZP_01438569
+IV-Non-photo	Jannaschia sp. CCS1	YP_511005
+IV-Non-photo	Mesorhizobium loti	BAB53192
+IV-Non-photo	Polaromonas sp. JS666	ZP_00502320
+IV-Non-photo	Polaromonas sp. JS666	ZP_00502381
+IV-Non-photo	Pseudomonas putida F1	ZP_00900417
+IV-Non-photo	Rhizobium etli CFN 42	YP_472663
+IV-Non-photo	Roseobacter sp. MED193	ZP_01056409
+IV-Non-photo	Sinorhizobium meliloti 1021	CAC48779
+IV-Non-photo	Xanthobacter autotrophicus Py2	ZP_01199940
+IV-Non-photo	Global Ocean Sampling expedition	EBH72800
+IV-Non-photo	Global Ocean Sampling expedition	EDC83230
+IV-Non-photo	Global Ocean Sampling expedition	ECV58360
+IV-GOS	Global Ocean Sampling expedition	EBH57905
+IV-GOS	Global Ocean Sampling expedition	EBM16636
+IV-GOS	Global Ocean Sampling expedition	EDE27295
+IV-GOS	Global Ocean Sampling expedition	EBO60441
+IV-GOS	Global Ocean Sampling expedition	EBK48460
+IV-DeepYkr	Alkalilimnicola ehrlichei MLHE-1	YP_742007
+IV-DeepYkr	Archaeoglobus fulgidus DSM 4304	NP_070416
+IV-DeepYkr	Halorhodospira halophila SL1	YP_001002057
+IV-DeepYkr	Heliobacillus mobilis	ABH04879
+IV-DeepYkr	Rhodopseudomonas palustris BisA53	YP_782588
+IV-DeepYkr	Rhodopseudomonas palustris BisB18	YP_532057
+IV-DeepYkr	Rhodopseudomonas palustris BisB5	YP_569369
+IV-DeepYkr	Rhodopseudomonas palustris CGA009	CAE27610
+IV-DeepYkr	Rhodopseudomonas palustris HaA2	YP_486834
+IV-DeepYkr	Rhodospirillum rubrum	ABC22798
+IV-DeepYkr	Global Ocean Sampling expedition	EDE24211
+IV-DeepYkr	Global Ocean Sampling expedition	EDE26668
+IV-DeepYkr	Global Ocean Sampling expedition	ECW00733
+IV-DeepYkr	Global Ocean Sampling expedition	EDG90708
+IV-EnvOnly	Acid Mine Consortium	AADL01000066
+IV-EnvOnly	Acid Mine Consortium	AADL01000179
+IV-Photo	Allochromatium vinosum	BAB44150
+IV-Photo	Chlorobium chlorochromatii CaD3	ABB28892
+IV-Photo	Chlorobium limicola f sp thiosulfatophilum	AAK14332
+IV-Photo	Chlorobium phaeobacteroides DSM 266	ZP_00527577
+IV-Photo	Chlorobium tepidum TLS1	AAM72993
+IV-Photo	Pelodictyon luteolum DSM 273	ABB23300
+IV-Photo	Pelodictyon phaeoclathratiforme BU-1	ZP_00590598
+IV-Photo	Prosthecochloris aestuarii DSM 271	ZP_00590874
+IV-Photo	Rhodopseudomonas palustris BisA53	YP_779361
+IV-Photo	Rhodopseudomonas palustris BisB18	YP_530146
+IV-Photo	Rhodopseudomonas palustris BisB5	YP_567601
+IV-Photo	Rhodopseudomonas palustris CGA009	CAE25706
+IV-Photo	Rhodopseudomonas palustris HaA2	YP_483922
+IV-Photo	Global Ocean Sampling expedition	ECV93956
+IV-YkrW	Acid Mine Consortium	AADL01000541
+IV-YkrW	Bacillus anthracis str. Ames	AAP27976
+IV-YkrW	Bacillus cereus ATCC 10987	NP_980397
+IV-YkrW	Bacillus cereus ATCC 14579	AAP10955
+IV-YkrW	Bacillus cereus E33L	AAU16474
+IV-YkrW	Bacillus clausii KSM-K16	BAD64310
+IV-YkrW	Bacillus licheniformis ATCC 14580	AAU23062
+IV-YkrW	Bacillus licheniformis DSM 13	AAU40416
+IV-YkrW	Bacillus subtilis subsp. subtilis str. 168	CAB13232
+IV-YkrW	Bacillus thuringiensis str. 97-27	AAT63718
+IV-YkrW	Exiguobacterium sibiricum 255-15	ZP_00539172
+IV-YkrW	Geobacillus kaustophilus HTA426	BAD75238
