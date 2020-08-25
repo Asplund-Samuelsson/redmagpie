@@ -111,7 +111,7 @@ gp = ggplot(
   )
 )
 gp$data = gp$data %>% inner_join(bind_rows(bant, aant)) # Add extra variables
-gp +
+gp = gp +
   geom_tree(size=0.1, mapping=aes(colour=Calvin)) +
   theme_bw() +
   facet_grid(~Domain, scales="free_x", space="free") +
@@ -120,6 +120,8 @@ gp +
   scale_colour_gradient2(
     high="#5ab4ac", mid="#888888", low="#d8b365", midpoint=0.5
   )
+
+ggsave("results/arc_bac_tree_comparison.pdf", gp, h=15/2.54, w=40/2.54)
 
 # Count Positive and Negative among Archaea
 acal = tibble(
@@ -176,6 +178,7 @@ sims = bind_rows(foreach(n=1:batr$Nnode + length(batr$tip.label)) %dopar% {
   TREE = extract.clade(batr, n)
   tibble(
     Node = n,
+    # Calculate the four Factors and multiply them
     Similarity = archsim(TREE) %>% pull(Factor) %>% prod(),
     Size = TREE$tip.label %>% length()
   )
@@ -213,60 +216,82 @@ slcs = bind_rows(tibble(Height = 0, Node = batr$node.label[1]), slcs)
 
 # Combine slices and similarities
 slsm = inner_join(slcs, sims) %>%
-  # Tree must have at least 2 nodes for correlation and testing
-  filter(Size > 3)
+  # Filter slices to between 50% and 200% of Archaeal tree size
+  filter(Size >= 50, Size <= 300) %>%
+  # Height is irrelevant
+  select(-Height) %>%
+  distinct()
 
-# Find optimal subtrees as close as possible to Arch. tree properties
-optimal_subtrees = function(n) {
-  # Filter to descendants of node n
-  sbts = slsm %>%
-    filter(Node %in% getDescendants(batr, n))
+# Determine all nodes in all subtrees
+nods = bind_rows(lapply(
+  1:nrow(slsm),
+  function(n){
+    tibble(
+      Subtree = n,
+      Node = slsm$Node[n],
+      Members = getDescendants(batr, slsm$Node[n])
+    )
+  }
+))
 
-  # Determine the optimal height
-  hopt = sbts %>%
-    # Calculate the average Similarity for each Height
-    group_by(Height) %>%
-    summarise(Similarity = mean(Similarity)) %>%
-    distinct() %>%
-    top_n(1, Similarity) %>%
-    # In case of multiple top Similarity Heights, select the lowest Height
-    top_n(1, -Height)
+# Create table with subtree information
+sbts = nods %>%
+  select(Subtree, Node) %>%
+  distinct() %>%
+  inner_join(slsm)
 
-  # Fix for when there is no subtree
-  if (nrow(hopt) == 0){hopt=tibble(Similarity = 0)}
+# Function for determining valid subtree companions of set of subtrees
+valid_subtrees = function(s){
+  # Determine invalid subtrees
+  ival = filter(nods, Members %in% filter(nods, Subtree %in% s)$Members)$Subtree
+  # Determine valid subtrees
+  filter(nods, !(Subtree %in% ival))$Subtree %>% unique()
+}
 
-  # If Similarity of the tree is better than that of the subtrees...
-  if (filter(sims, Node == n)$Similarity > hopt$Similarity){
-    # ...return the Accessions of the Subtree
-    return(extract.clade(batr, n)$tip.label)
+# Find optimal subtrees by iteratively picking the best valid tree
+optimal_subtrees = function(s=c()) {
+  # Find valid subtree partners
+  vals = valid_subtrees(s)
+  # If there are no valid partners...
+  if (length(vals) == 0) {
+    # ...return subtrees
+    return(c(s))
   } else {
-    # ...otherwise apply analysis recursively to descendants
-    lapply(filter(sbts, Height == hopt$Height)$Node, optimal_subtrees)
+    # ...otherwise pick the best subtree
+    b = sbts %>%
+      # The best subtree must be valid
+      filter(Subtree %in% vals) %>%
+      # Take the most similar subtree
+      slice_max(Similarity) %>%
+      pull(Subtree)
+    # Continue finding valid subtrees
+    optimal_subtrees(c(s, b))
   }
 }
 
-# Get a hierarchical list of lists for the optimal Subtrees
-subo = optimal_subtrees(batr$node.label[1])
+# Get the list of optimal subtrees
+subo = optimal_subtrees()
 
-# List flattening function by Tommy, 2011
-# https://stackoverflow.com/a/8139959/6018441
-flatten2 <- function(x) {
-  len <- sum(rapply(x, function(x) 1L))
-  y <- vector('list', len)
-  i <- 0L
-  rapply(x, function(x) { i <<- i+1L; y[[i]] <<- x })
-  y
-}
-
-# Flatten the list
-subf = flatten2(subo)
-
-# Create Subtree table
+# Create optimal subtree table
 subt = bind_rows(lapply(
-  1:length(subf), function(i){tibble(Subtree = i, Accession = subf[[i]])}
+  subo, function(i){
+    tibble(
+      Subtree = i,
+      Accession = extract.clade(batr, filter(sbts, Subtree == i)$Node)$tip.label
+    )
+  }
 ))
 
-# subt = read_tsv("intermediate/ace_bacterial_subtrees.tab")
+# Rename subtrees in order of Size
+subt = subt %>%
+  group_by(Subtree) %>%
+  summarise(Size = length(Subtree)) %>%
+  arrange(-Size) %>%
+  mutate(SubtreeX = 1:length(Subtree)) %>%
+  select(-Size) %>%
+  inner_join(subt) %>%
+  select(-Subtree) %>%
+  rename(Subtree = SubtreeX)
 
 # Check what kind of Subtrees are in there
 subs = subt %>%
@@ -276,17 +301,84 @@ subs = subt %>%
     Calvin = sum(Accession %in% posg)/length(Subtree)
   )
 
-# Get rid of trees smaller than 50 genomes
-subs = filter(subs, Count >= 50)
-subt = filter(subt, Subtree %in% subs$Subtree)
-
 # Save subtree table
-write_tsv(
-  bind_rows(lapply(
-    1:length(subf), function(i){tibble(Subtree = i, Accession = subf[[i]])}
-  )),
-  "intermediate/ace_bacterial_subtrees.tab"
+write_tsv(subt, "intermediate/ace_bacterial_subtrees.tab")
+
+library(ggnewscale)
+
+# Create dataframe with group association for heatmap
+txfl = data.frame(
+  row.names = orgs$Accession,
+  Organism = orgs$Colour,
+  stringsAsFactors=F
 )
+tfls = txfl[batr$tip.label, , drop=F]
+
+# Prepare extra variables
+bant = tibble(
+  Calvin = bACE$lik.anc %>%
+    as_tibble() %>%
+    pull(Positive)
+) %>%
+  mutate(node = 1:nrow(.) + length(batr$tip.label)) %>%
+  bind_rows(
+    tibble(
+      node = 1:length(batr$tip.label),
+      Calvin = ifelse(bpos == "Positive", 1, 0)
+    )
+  )
+
+# Calculate last common ancestors of subtrees
+clrs = c(
+  "#bf812d", "#f6e8c3", "#9970ab", "#e7d4e8",
+  "#35978f", "#c7eae5", "#1b7837", "#a6dba0",
+  "#8c510a", "#dfc27d", "#762a83", "#c2a5cf",
+  "#01665e", "#80cdc1", "#5aae61", "#d9f0d3"
+)
+
+mrca = bind_rows(lapply(
+  unique(subt$Subtree),
+  function(x){
+    tibble(
+      Subtree=x,
+      node=findMRCA(batr, filter(subt, Subtree == x)$Accession)
+    )
+  }
+)) %>%
+  mutate(Colour = clrs[1:nrow(.)])
+
+# Check the distribution of the Subtrees on the phylogenetic tree
+gp = ggtree(batr, layout="fan")
+gp$data = left_join(
+  gp$data,
+  subt %>% mutate(Subtree = as.character(Subtree)) %>% rename(label = Accession)
+) %>% inner_join(bant)
+for (n in mrca$node){
+  gp = gp + geom_hilight(node=n)
+  gp = gp + geom_cladelabel(
+    node=n, label=filter(mrca, node == n)$Subtree, offset.text=0.05
+  )
+}
+gp = gp + scale_fill_manual(
+
+)
+gp = gp + new_scale_fill()
+gp = gp + geom_nodepoint(mapping=aes(fill=Calvin), shape=21)
+gp = gp + geom_tippoint(mapping=aes(fill=Calvin), shape=24)
+gp = gp + scale_colour_viridis_c(option="B")
+gp = gp + scale_fill_gradient2(
+  high="#5ab4ac", mid="#f5f5f5", low="#d8b365", midpoint=0.5
+)
+gp = gp + new_scale_fill()
+gp = gheatmap(
+  gp, tfls,
+  offset=.05, width=.05, colnames=F,
+  color = NA
+)
+gp = gp + scale_fill_identity()
+gp = gp + geom_treescale(x=1.9, y=0, fontsize=3)
+
+ggsave("results/ace_bacterial_subtrees.orgs.pdf", gp, w=30, h=30, units="cm")
 
 # Perform correlation and testing on Subtrees
 ftpc = bind_rows(lapply(subs$Subtree, function(k){
@@ -366,83 +458,6 @@ topf = ftpv %>%
   filter(padjW < 0.05 & padjC < 0.05) %>%
   group_by(Subtree) %>%
   top_n(5, abs(R))
-
-library(ggnewscale)
-
-# Create dataframe with group association for heatmap
-txfl = data.frame(
-  row.names = orgs$Accession,
-  Organism = orgs$Colour,
-  stringsAsFactors=F
-)
-tfls = txfl[batr$tip.label, , drop=F]
-
-# Prepare extra variables
-bant = tibble(
-  Calvin = bACE$lik.anc %>%
-    as_tibble() %>%
-    pull(Positive)
-) %>%
-  mutate(node = 1:nrow(.) + length(batr$tip.label)) %>%
-  bind_rows(
-    tibble(
-      node = 1:length(batr$tip.label),
-      Calvin = ifelse(bpos == "Positive", 1, 0)
-    )
-  )
-
-# Calculate last common ancestors of subtrees
-clrs = c(
-  "#bf812d", "#f6e8c3", "#9970ab", "#e7d4e8",
-  "#35978f", "#c7eae5", "#1b7837", "#a6dba0",
-  "#8c510a", "#dfc27d", "#762a83", "#c2a5cf",
-  "#01665e", "#80cdc1", "#5aae61", "#d9f0d3"
-)
-
-mrca = bind_rows(lapply(
-  unique(subt$Subtree),
-  function(x){
-    tibble(
-      Subtree=x,
-      node=findMRCA(batr, filter(subt, Subtree == x)$Accession)
-    )
-  }
-)) %>%
-  mutate(Colour = clrs[1:nrow(.)])
-
-# Check the distribution of the Subtrees on the phylogenetic tree
-gp = ggtree(batr, layout="fan")
-gp$data = left_join(
-  gp$data,
-  subt %>% mutate(Subtree = as.character(Subtree)) %>% rename(label = Accession)
-) %>% inner_join(bant)
-for (n in mrca$node){
-  gp = gp + geom_hilight(node=n, fill="lightgrey")
-  gp = gp + geom_cladelabel(
-    node=n, label=filter(mrca, node == n)$Subtree, offset.text=0.05
-  )
-}
-gp = gp + scale_fill_manual(
-
-)
-gp = gp + new_scale_fill()
-gp = gp + geom_nodepoint(mapping=aes(fill=Calvin), shape=21)
-gp = gp + geom_tippoint(mapping=aes(fill=Calvin), shape=24)
-gp = gp + scale_colour_viridis_c(option="B")
-gp = gp + scale_fill_gradient2(
-  high="#5ab4ac", mid="#f5f5f5", low="#d8b365", midpoint=0.5
-)
-gp = gp + new_scale_fill()
-gp = gheatmap(
-  gp, tfls,
-  offset=.05, width=.05, colnames=F,
-  color = NA
-)
-gp = gp + scale_fill_identity()
-gp = gp + geom_treescale(x=1.9, y=0, fontsize=3)
-
-ggsave("results/ace_bacterial_subtrees.orgs.pdf", gp, w=30, h=30, units="cm")
-
 
 # Plot trees for top Features
 garbage = foreach(i=1:nrow(topf)) %dopar% {
