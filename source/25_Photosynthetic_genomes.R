@@ -38,7 +38,7 @@ func = func %>%
 # Count the number of photosynthetic genomes
 # filter(func, Photosynthesis >= 3) %>% pull(CBB) %>% table
 # CBB-negative CBB-positive
-#          131          133
+#          115          113
 
 # Save the tables
 phot = phot %>%
