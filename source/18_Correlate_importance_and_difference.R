@@ -42,4 +42,4 @@ ecct = ecct %>%
   )
 
 # Correlate absolute EC count Difference to Importance
-cor(abs(ecct$Difference), ecct$Importance)
+cor(abs(ecct$Difference), ecct$Importance, method="spearman")
