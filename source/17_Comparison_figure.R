@@ -60,17 +60,14 @@ rnks = rnks %>%
           "PF01116.20" = "ALD",
           "PF17866.1" = "CbbX",
           "EC3.1.3.11" = "FBPase",
-          "EC2.2.1.6" = "ALS",
-          "PF10531.9" = "SLBB",
-          "PF04172.16" = "LrgB",
           "PF08406.10" = "CbbQ",
           "EC2.2.1.1" = "TKT",
           "EC5.1.3.1" = "RPE",
           "PF00834.19" = "RPE",
-          "PF00936.19" = "BMC",
-          "PF17042.5" = "NBD",
-          "PF07005.11" = "SBD",
-          "PF01058.22" = "NDH"
+          "EC1.1.5.4" = "MDH",
+          "EC2.4.1.1" = "GP",
+          "PF02823.16" = "ATPsyn",
+          "PF12774.7" = "AAA_6"
         ),
         Label = ifelse(Label == Feature, NA, Label)
       )
@@ -78,6 +75,17 @@ rnks = rnks %>%
   mutate(
     Method = factor(Method, levels=c("Enrichment", "ACE", "Random forest"))
   )
+
+# Reverse log10 transformation by Brian Diggs 2012
+# https://stackoverflow.com/questions/11053899/how-to-get-a-reversed-log10-scale-in-ggplot2
+library("scales")
+reverselog_trans <- function(base = exp(1)) {
+    trans <- function(x) -log(x, base)
+    inv <- function(x) base^(-x)
+    trans_new(paste0("reverselog-", format(base)), trans, inv,
+              log_breaks(base = base),
+              domain = c(1e-100, Inf))
+}
 
 # Plot it
 gp = ggplot(rnks, aes(x=Rank, y=Consensus, colour=medD, shape=Feature_Type))
@@ -98,9 +106,9 @@ gp = gp + scale_colour_gradientn(
   trans="sqrt"
 )
 gp = gp + facet_grid(~Method, scales="free_x", space="free")
-gp = gp + annotation_logticks(
-  size=0.3, short=unit(0.07, "cm"), mid=unit(0.14, "cm"), long=unit(0.21, "cm")
-)
+# gp = gp + annotation_logticks(
+#   size=0.3, short=unit(0.07, "cm"), mid=unit(0.14, "cm"), long=unit(0.21, "cm")
+# )
 gp = gp + theme(
   strip.background = element_blank(),
   axis.text = element_text(colour="black"),
@@ -116,6 +124,7 @@ gp = gp + labs(
   shape="", colour="Median number of genes to Rubisco (n > 200)",
   y="Consensus rank", x="Method rank"
 )
-gp = gp + scale_x_log10(limits=c(0.5, NA)) + scale_y_log10(limits=c(0.5, NA))
+gp = gp + scale_x_continuous(trans=reverselog_trans(10), limits=c(NA, 0.5))
+gp = gp + scale_y_continuous(trans=reverselog_trans(10), limits=c(NA, 0.5))
 
 ggsave("results/method_feature_rank_comparison_2.pdf", gp, h=10, w=18, units="cm")
