@@ -28,3 +28,11 @@ comb %>% group_by(CBB) %>% summarise(Completeness = median(Completeness))
 # 2     1         98.8
 
 # Check how many complete genomes are CBB-negative
+comb %>%
+  mutate(Completeness = ifelse(Completeness < 99, "<99", "≥99")) %>%
+  group_by(Completeness) %>% summarise(CBB = sum(CBB) / length(CBB))
+# # A tibble: 2 x 2
+#   Completeness   CBB
+#   <chr>        <dbl>
+# 1 <99          0.595
+# 2 ≥99          0.937
