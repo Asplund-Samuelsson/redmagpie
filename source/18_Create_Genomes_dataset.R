@@ -4,10 +4,12 @@ library(tidyverse)
 # Define infiles
 meta_file = "data/gtdb_metadata.tab.gz"
 exgn_file = "intermediate/example_genomes.tab"
+subt_file = "intermediate/ace_bacterial_subtrees.tab"
 
 # Load data
 meta = read_tsv(meta_file)
 exgn = read_tsv(exgn_file)
+subt = read_tsv(subt_file)
 
 # Load features
 dpec = read_csv(
@@ -58,6 +60,13 @@ dset = bind_rows(
   inner_join(dpec %>% select(-Data) %>% spread(Feature, Count)) %>%
   inner_join(pfam %>% select(-Data) %>% spread(Feature, Count))
 
+# Add subtree information
+dset = dset %>%
+  left_join(subt) %>%
+  select(Accession, Relative, Distance, Subtree, everything()) %>%
+  mutate(Subtree = ifelse(Domain == "Archaea", 0, Subtree))
+
+# Remove redundant domain information
 dset = dset %>% select(-Domain)
 
 # Save supplementary dataset
