@@ -147,7 +147,7 @@ accr = acco %>%
   mutate(
     X = abs(r) *
       log(q_Correlation + median(q_Correlation))/log(median(q_Correlation)) *
-      log(q_Wilcox + median(q_Wilcox))/log(median(q_Correlation))
+      log(q_Wilcox + median(q_Wilcox))/log(median(q_Wilcox))
   ) %>%
   # Sum the weighted r per feature
   group_by(Feature) %>%

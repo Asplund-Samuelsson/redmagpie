@@ -66,8 +66,7 @@ rnks = rnks %>%
           "PF00834.19" = "RPE",
           "EC1.1.5.4" = "MDH",
           "EC2.4.1.1" = "GP",
-          "PF02823.16" = "ATPsyn",
-          "PF12774.7" = "AAA_6"
+          "PF02823.16" = "ATPsyn"
         ),
         Label = ifelse(Label == Feature, NA, Label)
       )
