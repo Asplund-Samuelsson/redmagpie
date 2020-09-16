@@ -197,3 +197,15 @@ diff \
 seqmagick convert --include-from-file data/rubisco.txt \
 intermediate/gtdb_r89_ncbi_orf.rubisco.deepec_filtered.fasta \
 data/rubisco.fasta
+
+# Create list of Cyanobacteria genomes not found to contain both Rubisco and Prk
+diff \
+<(
+  (cat data/rubisco.txt | cut -f 1 -d \| | sort | uniq;
+   cat data/prk.txt | cut -f 1 -d \| | sort | uniq) | \
+   sort | uniq -d | sort
+) \
+<(
+  cut -f 1,5 intermediate/accession_taxonomy.tab | \
+  grep -P "\tCyanobacteria$" | cut -f 1 | sort
+) | grep ">" | cut -f 2 -d \  > data/cyanobacteria_without_CBB.txt
