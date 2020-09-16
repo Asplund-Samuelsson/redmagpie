@@ -192,3 +192,8 @@ diff \
   cut -f 1,5 intermediate/accession_taxonomy.tab | \
   grep -P "\tCyanobacteria$" | cut -f 1 | sort
 ) | grep "<" | cut -f 2 -d \  > data/positive_genomes.txt
+
+# Create unaligned Rubisco FASTA
+seqmagick convert --include-from-file data/rubisco.txt \
+intermediate/gtdb_r89_ncbi_orf.rubisco.deepec_filtered.fasta \
+data/rubisco.fasta
