@@ -50,6 +50,10 @@ Note that the input nucleotide files must be named with the GTDB accession IDs, 
 
 The analysis also relies on the GTDB core protein alignments and Pfam-A HMMs (not included; see steps 02, 03, and 05).
 
+### Example genome ORFs and annotations
+
+Files containing example genome ORFs and their annotations can be [downloaded from Figshare](https://doi.org/10.6084/m9.figshare.13013309) (DOI 10.6084/m9.figshare.13013309).
+
 ## Method
 
 These are short descriptions of each step in the analysis. For details, see the corresponding scripts. Some output files have been omitted in the descriptions.
