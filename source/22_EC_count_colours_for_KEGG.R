@@ -2,20 +2,18 @@ options(width=150)
 library(tidyverse)
 
 # Define infiles
-feim_file = "intermediate/EC_count_features.importance.tab.gz"
 enri_file = "results/Supplementary_Enrichment.tab"
 tran_file = "data/kegg_enzyme.old_new.tab"
 
 # Load data
-feim = read_tsv(feim_file)
 enri = read_tsv(enri_file)
 tran = read_tsv(tran_file, col_names = c("EC", "NewEC"))
 
 # Clean up KEGG EC annotations
 ecct = enri %>%
+  # Keep only ECs
+  filter(Feature_Type == "DeepEC") %>%
   rename(EC = Feature) %>%
-  # Remove features that were filtered out
-  filter(EC %in% feim$Feature) %>%
   # Clean up EC
   mutate(EC = str_replace(EC, "EC", ""))
 

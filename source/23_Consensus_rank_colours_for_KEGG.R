@@ -2,23 +2,22 @@ options(width=150)
 library(tidyverse)
 
 # Define infiles
-feim_file = "intermediate/EC_count_features.importance.tab.gz"
+cons_file = "results/Supplementary_Consensus_rank.tab"
 tran_file = "data/kegg_enzyme.old_new.tab"
 
 # Load data
-feim = read_tsv(feim_file)
+cons = read_tsv(cons_file)
 tran = read_tsv(tran_file, col_names = c("EC", "NewEC"))
 
 # Clean up EC annotations
-feim = feim %>%
+cons = cons %>%
+  # Keep only ECs
+  filter(Feature_Type == "DeepEC") %>%
   rename(EC = Feature) %>%
   # Clean up EC
-  mutate(EC = str_replace(EC, "EC", "")) %>%
-  # Calculate feature Importance mean across forests
-  group_by(EC) %>%
-  summarise(Importance = mean(Importance), log10imp = log10(Importance))
+  mutate(EC = str_replace(EC, "EC", ""))
 
-feim = feim %>%
+cons = cons %>%
   # Rename EC if it has been updated
   left_join(tran) %>%
   mutate(
@@ -26,39 +25,39 @@ feim = feim %>%
     EC = ifelse(is.na(NewEC), EC, NewEC)
   ) %>%
   select(-NewEC) %>%
-  # Order by importance
-  arrange(-Importance)
+  # Order by rank
+  arrange(Rank)
 
-# Calculate importance colours and write file for KEGG mapping
+# Calculate rank colours and write file for KEGG mapping
 library(viridis)
 library(grDevices)
-pal = colorRamp(viridis(64))
+pal = colorRamp(rev(viridis(64)))
 
 # Function to determine if colour is "bright"
 # https://trendct.org/2016/01/22/how-to-choose-a-label-color-to-contrast-with-background/
 is_bright = function(x) {(x[1]*299 + x[2]*587 + x[3]*114) / 1000 > 123}
 
-# Add colour to importances
-imco = feim %>%
-  # Remove if there is no importance
-  filter(is.finite(log10imp)) %>%
+# Add colour to ranks
+raco = cons %>%
+  # Calculate log of rank
+  mutate(logrank = log(Rank)) %>%
   # Select relevant data
-  select(log10imp, EC) %>%
-  # Normalize log10imp to range 0 to 1
+  select(logrank, EC) %>%
+  # Normalize logrank to range 0 to 1
   mutate(
-    Importance = (log10imp - min(log10imp)) / (max(log10imp) - min(log10imp))
+    Rank = (logrank - min(logrank)) / (max(logrank) - min(logrank))
   ) %>%
   # Add colours
   mutate(
     Colour = unlist(lapply(
-      Importance,
+      Rank,
       function (a) {
         x = pal(a)
         rgb(x[1], x[2], x[3], maxColorValue=255)
       }
     )),
     TextColour = ifelse(
-      unlist(lapply(Importance, function (a) {is_bright(pal(a))})),
+      unlist(lapply(Rank, function (a) {is_bright(pal(a))})),
       "#000000", "#ffffff"
     ),
     KEGGColour = paste(Colour, TextColour, sep=",")
@@ -66,7 +65,7 @@ imco = feim %>%
 
 # Write colours in format expected by KEGG
 write_delim(
-  select(imco, EC, KEGGColour),
-  "results/EC_count_features.KEGG_importance_colours.txt",
+  select(raco, EC, KEGGColour),
+  "results/EC_count_features.KEGG_consensus_rank_colours.txt",
   delim=" ", col_names=F
 )

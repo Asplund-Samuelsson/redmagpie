@@ -240,15 +240,15 @@ _Script:_ `source/22_EC_count_colours_for_KEGG.R`
 
 _Output:_ `results/EC_count_features.KEGG_difference_colours.discrete.txt`
 
-Generate colors based on enrichment/depletion of ECs included in the random forest analysis to use with [KEGG's pathway mapping tool](https://www.genome.jp/kegg/tool/map_pathway2.html).
+Generate colors based on enrichment/depletion of ECs to use with [KEGG's pathway mapping tool](https://www.genome.jp/kegg/tool/map_pathway2.html).
 
-### 23: Generate colors for EC importance to use with KEGG maps
+### 23: Generate colors for EC consensus rank to use with KEGG maps
 
-_Script:_ `source/23_Feature_importance_colours_for_KEGG.R`
+_Script:_ `source/23_Consensus_rank_colours_for_KEGG.R`
 
-_Output:_ `results/EC_count_features.KEGG_importance_colours.txt`
+_Output:_ `results/EC_count_features.KEGG_consensus_rank_colours.txt`
 
-Generate colors based on EC random forest importance values to use with [KEGG's pathway mapping tool](https://www.genome.jp/kegg/tool/map_pathway2.html).
+Generate colors based on EC consensus ranks to use with [KEGG's pathway mapping tool](https://www.genome.jp/kegg/tool/map_pathway2.html).
 
 ### 24: Identify transport features
 
