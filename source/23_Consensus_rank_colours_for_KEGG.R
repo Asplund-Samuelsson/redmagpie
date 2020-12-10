@@ -69,3 +69,20 @@ write_delim(
   "results/EC_count_features.KEGG_consensus_rank_colours.txt",
   delim=" ", col_names=F
 )
+
+# Create a log-transformed rank plot
+gp = ggplot(cons, aes(x=Rank, y=1, colour=log(Rank)))
+gp = gp + geom_point()
+gp = gp + theme_bw()
+gp = gp + theme(
+  axis.text=element_text(colour="black"),
+  axis.ticks=element_line(colour="black")
+)
+gp = gp + scale_colour_viridis_c(direction=-1)
+gp = gp + scale_x_log10()
+gp = gp + annotation_logticks()
+
+ggsave(
+  "results/EC_count_features.KEGG_consensus_rank_colours.logscale.pdf",
+  gp, w=8, h=3
+)
