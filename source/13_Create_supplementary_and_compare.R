@@ -216,6 +216,11 @@ cors = tibble(
     corp(rnks$A, rnks$E),
     corp(rnks$A, rnks$R),
     corp(rnks$E, rnks$R)
+  ),
+  n = c(
+    sum(!(is.na(rnks$A) | is.na(rnks$E))),
+    sum(!(is.na(rnks$A) | is.na(rnks$R))),
+    sum(!(is.na(rnks$E) | is.na(rnks$R)))
   )
 )
 

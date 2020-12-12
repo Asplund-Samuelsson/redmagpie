@@ -7,7 +7,6 @@ supe_file = "results/Supplementary_Enrichment.tab"
 supa_file = "results/Supplementary_ACE.tab"
 supr_file = "results/Supplementary_Random_forest.tab"
 cons_file = "results/Supplementary_Consensus_rank.tab"
-corr_file = "results/method_correlation.tab"
 rubd_file = "results/Supplementary_Gene_proximity.tab"
 
 # Load data
@@ -15,7 +14,6 @@ supe = read_tsv(supe_file)
 supa = read_tsv(supa_file)
 supr = read_tsv(supr_file)
 cons = read_tsv(cons_file)
-corr = read_tsv(corr_file)
 rubd = read_tsv(rubd_file)
 
 # Combine ranks
