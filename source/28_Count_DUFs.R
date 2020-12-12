@@ -5,11 +5,13 @@ library(tidyverse)
 supE_file = "results/Supplementary_Enrichment.tab"
 supA_file = "results/Supplementary_ACE.tab"
 supR_file = "results/Supplementary_Random_forest.tab"
+supC_file = "results/Supplementary_Consensus_rank.tab"
 
 # Load data
 supE = read_tsv(supE_file)
 supA = read_tsv(supA_file)
 supR = read_tsv(supR_file)
+supC = read_tsv(supC_file)
 
 # Count DUFs
 filter(supE, Feature_Type == "Pfam") %>%
@@ -34,3 +36,12 @@ filter(supR, Feature_Type == "Pfam") %>%
 	select(Feature, Name, Rank) %>%
 	filter(startsWith(Name, "DUF") | startsWith(Name, "UPF")) %>%
   arrange(Rank)
+
+filter(supC, Feature_Type == "Pfam") %>%
+	select(Feature, Name, Rank) %>%
+	distinct() %>%
+	top_n(200, -Rank) %>%
+	filter(startsWith(Name, "DUF") | startsWith(Name, "UPF")) %>%
+	pull(Feature) %>%
+	unique %>%
+	length
