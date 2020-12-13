@@ -314,6 +314,30 @@ _Output:_ `results/Table_1_Top_consensus_ranks.tab`
 
 Tidy up the top 20 EC and Pfam features output from step 14 to create Table 1.
 
+### 32: List Cyanobacteria that are CBB-positive
+
+_Script:_ `source/32_List_cyanobacteria_with_CBB.R`
+
+_Output:_ `intermediate/cyano_with_CBB.txt`
+
+Make a list of Cyanobacteria that were identified to carry the Calvin cycle.
+
+### 33: Select closest CBB-negative relatives of Cyanobacteria
+
+_Script:_ `source/33_Select_cyano_closest_relatives.R`
+
+_Output:_ `intermediate/cyano_relatives.tab`
+
+Select closest CBB-negative relatives of CBB-positive Cyanobacteria as in step 04.
+
+### 34: Compare distance to relatives in Cyanobacteria and others
+
+_Script:_ `source/34_Cyano_vs_others_relative_dist.R`
+
+_Output:_ `results/cyano_vs_others_relative_dist.tab`
+
+Compare the distance between CBB-positive Cyanobacteria and their CBB-negative relatives to the distance between other CBB-positive and CBB-negative microbes with a Wilcoxon rank sum test.
+
 ### Extra: Plotting of ACE results on phylogenetic trees
 
 _Script:_ `source/Plot_ACE.R`
