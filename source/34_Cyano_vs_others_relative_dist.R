@@ -46,3 +46,19 @@ write_tsv(
   diff %>% select(-Distances) %>% spread(Type, Distance),
   "results/cyano_vs_others_relative_dist.tab"
 )
+
+# Check what organisms are closely related to Cyanobacteria
+comp %>%
+  filter(Domain == "Cyanobacteria") %>%
+  pull(Relative_organism) %>%
+  table()
+
+taxo %>%
+  filter(
+    Accession %in% (
+      comp %>% filter(Domain == "Cyanobacteria") %>% pull(Relative)
+    )
+  ) %>%
+  filter(Group == "Firmicutes") %>%
+  pull(Class) %>%
+  table()
