@@ -347,4 +347,4 @@ _Output:_ A PDF with a phylogenetic (sub)tree displaying ACE data.
 Plots ACE results of any feature on any subtree (as long as the feature is present in the subtree organisms) to allow creating phylogenetic tree figures displaying correlations between features and the CBB status.
 
 ## Author
-Johannes Asplund-Samuelsson, KTH (johannes.asplund.samuelsson@scilifelab.se)
+Johannes Asplund-Samuelsson (johannes.aspsam@gmail.com)
